@@ -9,6 +9,7 @@ __author__ = 'itoledo'
 
 from datetime import datetime
 from datetime import timedelta
+import numpy as np
 
 import pandas as pd
 import ephem
@@ -54,7 +55,7 @@ class WtoAlgorithm(WtoDatabase):
     :param forcenew: See WtoDatabase definitions.
     :return: A WtoAlgorithm instance.
     """
-    def __init__(self, path='/.wto/', source=None, forcenew=False):
+    def __init__(self, path='/.wto3/', source=None, forcenew=False):
 
         super(WtoAlgorithm, self).__init__(path, source, forcenew)
         self.pwv = 1.2
@@ -384,18 +385,19 @@ class WtoAlgorithm(WtoDatabase):
                     r['arrayMinAR'], r['arrayMaxAR'], r['LAS'],
                     r['grade'], r['repfreq'], r['DEC'], r['EXEC'], array,
                     r['frac'], r['maxPWVC'], r['CODE'], r['isPointSource'],
-                    r['name']),
+                    r['name'], r['HA']),
                 axis=1)
             scores = pd.DataFrame(scores.values.tolist(), index=scores.index)
             scores.columns = pd.Index(
                 [u'sb_cond_score', u'sb_array_score', u'sb_completion_score',
+                 u'sb_ha_scorer',
                  u'sb_exec_score', u'sb_science_score', u'sb_grade_score',
                  u'arcorr', u'score', u'lascorr'])
         else:
             scores = pd.DataFrame(
                 columns=pd.Index(
                     [u'sb_cond_score', u'sb_array_score',
-                     u'sb_completion_score', u'sb_exec_score',
+                     u'sb_completion_score', u'sb_ha_scorer', u'sb_exec_score',
                      u'sb_science_score', u'sb_grade_score', u'arcorr',
                      u'score', u'lascorr']))
         if array == '12m':
@@ -410,7 +412,7 @@ class WtoAlgorithm(WtoDatabase):
 
     def calculate_score(self, ecount, tcount, srank, ar, aminar, amaxar,
                         las, grade, repfreq, dec, execu, array,
-                        frac, maxpwvc, code, points, name):
+                        frac, maxpwvc, code, points, name, ha):
 
         """
         Please go to the :ref:`Score and ranking <score>` section for an
@@ -525,15 +527,20 @@ class WtoAlgorithm(WtoDatabase):
             else:
                 sb_cond_score = 0.
 
+        sb_ha_scorer = ((np.cos(np.radians((ha + 1) * 15.)) - 0.3)
+                        /
+                        (1 - 0.3)) * 10.
+
         score = (0.35 * sb_cond_score +
                  0.20 * sb_array_score +
-                 0.15 * sb_completion_score +
-                 0.10 * sb_exec_score +
+                 0.10 * sb_completion_score +
+                 0.05 * sb_exec_score +
                  0.05 * sb_science_score +
-                 0.15 * sb_grade_score)
+                 0.15 * sb_grade_score +
+                 0.10 * sb_ha_scorer)
         return (sb_cond_score, sb_array_score, sb_completion_score,
-                sb_exec_score, sb_science_score, sb_grade_score, arcorr, score,
-                lascorr)
+                sb_ha_scorer, sb_exec_score, sb_science_score, sb_grade_score,
+                arcorr, score, lascorr)
 
     def check_observability(self, array):
 
