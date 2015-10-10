@@ -2,13 +2,13 @@ import os
 import sys
 # import pandas as pd
 # import ephem
-import arrayResolutionCy3 as ARes
+import WtoArrayResolutionCy3 as ARes
 import cx_Oracle
 
 from collections import namedtuple
 from subprocess import call
-from XmlParsers3 import *
-from converter3 import *
+from WtoXmlParsers3 import *
+from WtoConverter3 import *
 
 prj = '{Alma/ObsPrep/ObsProject}'
 val = '{Alma/ValueTypes}'
@@ -44,6 +44,7 @@ conflim = pd.Series(
 phase_i_status = ["Phase1Submitted", "Rejected", "Approved"]
 
 
+# noinspection PyAttributeOutsideInit
 class Database(object):
 
     """
@@ -65,9 +66,9 @@ class Database(object):
     :type forcenew: boolean, default False
     """
 
-    def __init__(self, path='/.apa3/', forcenew=False, verbose=True):
+    def __init__(self, path='/.wto3/', forcenew=False, verbose=True):
         """
-        Initialize the APA ETL database
+        Initialize the WTO3 database
 
         """
 
@@ -76,8 +77,8 @@ class Database(object):
         if path[-1] != '/':
             path += '/'
         self.path = os.environ['HOME'] + path
-        self.apa_path = os.environ['APA3']
-        self.data_path = os.environ['PHASEONE_C3']
+        self.wto_path = os.environ['WTO3']
+        self.data_path = os.environ['APDM_C3']
         self.sbxml = self.path + 'schedblock/'
         self.obsxml = self.path + 'obsproject/'
         self.propxml = self.path + 'obsproposal/'
@@ -97,11 +98,11 @@ class Database(object):
         self.verbose = verbose
 
         self.obsproject = pd.DataFrame()
-        self.ares = ARes.arrayRes()
+        self.ares = ARes.ArrayRes()
 
         # self.grades = pd.read_table(
-        #     self.apa_path + 'conf/DC_final modified gradeC.csv', sep=',')
-        # self.sb_sg_p1 = pd.read_pickle(self.apa_path + 'conf/sb_sg_p1.pandas')
+        #     self.wto_path + 'conf/DC_final modified gradeC.csv', sep=',')
+        # self.sb_sg_p1 = pd.read_pickle(self.wto_path + 'conf/sb_sg_p1.pandas')
 
         # Global SQL search expressions
         # Search Project's PT information and match with PT Status

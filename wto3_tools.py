@@ -1,5 +1,3 @@
-__author__ = 'itoledo'
-
 import pandas as pd
 import datetime as dt
 import ephem
@@ -59,7 +57,7 @@ def create_dates(data_arin):
     return data_ar
 
 
-def observable(ra1, dec1, alma, isephem, minAR, maxAR, array, sbuid):
+def observable(ra1, dec1, alma, isephem, min_ar, max_ar, array, sbuid):
 
     datet = alma.date
     conf = [None, None, None, None, None, None, None, None]
@@ -67,7 +65,7 @@ def observable(ra1, dec1, alma, isephem, minAR, maxAR, array, sbuid):
 
     if array == "TWELVE-M":
         for i, a in enumerate(ar_res):
-            if minAR <= a <= maxAR:
+            if min_ar <= a <= max_ar:
                 conf[i] = 'C36-' + str(i + 1)
                 twelve_good += 1
 
@@ -146,7 +144,7 @@ def day_night(sdate, edate, alma):
 
 
 def avail_calc(orise, oset, conf1, conf2, conf3, conf4, conf5, conf6, conf7,
-               conf8, up, band, datedf):
+               conf8, band, datedf):
 
     # First, is observable?
     confnames_df = ['C36_1', 'C36_2', 'C36_3', 'C36_4', 'C36_5', 'C36_6',
@@ -305,36 +303,36 @@ def sel(df, lst, limitbands, array, out):
     r = df2.apply(
         lambda row: sim(lst, limitbands, row), axis=1)
     try:
-        SB_UID = r.query('obs == True').sort('clo').SB_UID.values[0]
+        sb_uid = r.query('obs == True').sort('clo').SB_UID.values[0]
     except IndexError:
-        SB_UID = None
+        sb_uid = None
     except Exception, e:
         print e
-        SB_UID = None
+        sb_uid = None
 
-    if SB_UID is None:
+    if sb_uid is None:
 
         df2 = df1.query('PRJ_LETTER_GRADE in ["A", "B"]')
         r = df2.apply(lambda row: sim(lst, limitbands, row), axis=1)
         try:
-            SB_UID = r.query('obs == True').sort('clo').SB_UID.values[0]
+            sb_uid = r.query('obs == True').sort('clo').SB_UID.values[0]
         except IndexError:
-            SB_UID = None
+            sb_uid = None
 
-    if SB_UID is None:
+    if sb_uid is None:
 
         r = df1.apply(lambda row: sim(lst, limitbands, row), axis=1)
         try:
-            SB_UID = r.query('obs == True').sort('clo').SB_UID.values[0]
+            sb_uid = r.query('obs == True').sort('clo').SB_UID.values[0]
         except IndexError:
-            SB_UID = None
+            sb_uid = None
 
-    if SB_UID:
-        df.loc[SB_UID, 'SBremExec'] -= 1
+    if sb_uid:
+        df.loc[sb_uid, 'SBremExec'] -= 1
 
-    out.append(SB_UID)
+    out.append(sb_uid)
 
-    return out, SB_UID
+    return out, sb_uid
 
 
 def runsim(date_df, df, alma):
@@ -368,17 +366,20 @@ def runsim(date_df, df, alma):
 
             lst = np.rad2deg(alma.sidereal_time()) / 15.
             out, sb = sel(dft, lst, limit_b, array, out)
+
             if sb:
                 dur = dft.loc[sb, 'SB_ETC2_exec']
             try:
                 sbr = int(dft.loc[sb, 'SBremExec'])
                 gr = dft.loc[sb, 'PRJ_LETTER_GRADE']
                 ra = dft.loc[sb, 'RA']
+                # noinspection PyUnboundLocalVariable
                 out1.append(
                     [ti, lst, day, len(limit_b), array, sb, sbr, ra, gr, dur])
             except ValueError:
                 out1.append(
-                    [ti, lst, day, len(limit_b), array, sb, None, None, None, 0])
+                    [ti, lst, day, len(limit_b), array, sb, None, None, None,
+                     0])
 
             if sb:
                 dur = dft.loc[sb, 'SB_ETC2_exec'] * 1.1

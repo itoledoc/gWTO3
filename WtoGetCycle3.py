@@ -1,6 +1,6 @@
 import os
 import cx_Oracle
-from XmlParsers3 import *
+from WtoXmlParsers3 import *
 import shutil
 
 __author__ = 'itoledo'
@@ -18,8 +18,8 @@ conx_string = os.environ['CON_STR']
 connection = cx_Oracle.connect(conx_string)
 cursor = connection.cursor()
 
-path = os.environ['PHASEONE_C3']
-data_path = os.environ['PHASEONE_C3']
+path = os.environ['APDM_C3']
+data_path = os.environ['APDM_C3']
 
 sql1 = str(
     "SELECT obs1.PRJ_ARCHIVE_UID as OBSPROJECT_UID, obs1.PI, "
@@ -99,8 +99,7 @@ for r in os.listdir(data_path + 'obsproject'):
             xml_content = data[1].read()
             xmlfilename = obspropuid.replace('://', '___').replace('/', '_') + \
                 '.xml'
-            filename = data_path + 'obsproposal/' + \
-                       xmlfilename
+            filename = data_path + 'obsproposal/' + xmlfilename
             io_file = open(filename, 'w')
             io_file.write(xml_content)
             io_file.close()
@@ -125,7 +124,7 @@ for r in os.listdir(data_path + 'obsproject'):
             xmlfilename = obspropuid.replace('://', '___').replace('/', '_') + \
                 '.xml'
             filename = data_path + 'obsproposal/' + \
-                       xmlfilename
+                xmlfilename
             io_file = open(filename, 'w')
             io_file.write(xml_content)
             io_file.close()
@@ -144,8 +143,7 @@ for r in os.listdir(data_path + 'obsproject'):
             xml_content = data[1].read()
             xmlfilename = obsrevuid.replace('://', '___').replace('/', '_') + \
                 '.xml'
-            filename = data_path + 'obsreview/' + \
-                       xmlfilename
+            filename = data_path + 'obsreview/' + xmlfilename
             io_file = open(filename, 'w')
             io_file.write(xml_content)
             io_file.close()
@@ -175,8 +173,7 @@ for r in os.listdir(data_path + 'obsreview/'):
             data = cursor.fetchall()[0]
             xml_content = data[1].read()
             xmlfilename = sbuid.replace('://', '___').replace('/', '_') + '.xml'
-            filename = data_path + 'schedblock/' + \
-                       xmlfilename
+            filename = data_path + 'schedblock/' + xmlfilename
             io_file = open(filename, 'w')
             io_file.write(xml_content)
             io_file.close()
@@ -203,8 +200,7 @@ for r in os.listdir(data_path + 'obsproject/'):
                 xml_content = data[1].read()
                 xmlfilename = sbuid.replace('://', '___').replace('/', '_') + \
                     '.xml'
-                filename = data_path + 'schedblock/' + \
-                           xmlfilename
+                filename = data_path + 'schedblock/' + xmlfilename
                 io_file = open(filename, 'w')
                 io_file.write(xml_content)
                 io_file.close()

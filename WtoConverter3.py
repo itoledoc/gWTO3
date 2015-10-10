@@ -1,5 +1,3 @@
-__author__ = 'itoledo'
-
 import numpy as np
 
 

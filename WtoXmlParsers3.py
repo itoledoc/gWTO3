@@ -1,6 +1,6 @@
 from lxml import objectify
 import pandas as pd
-from converter3 import *
+from WtoConverter3 import *
 import ephem
 
 __author__ = 'itoledo'
@@ -142,11 +142,11 @@ class ObsProposal(object):
                     except AttributeError:
                         repeats = None
                     try:
-                        lSTMin = t.lSTMin.pyval
-                        lSTMax = t.lSTMax.pyval
+                        lstmin = t.lSTMin.pyval
+                        lstmax = t.lSTMax.pyval
                     except:
-                        lSTMin = None
-                        lSTMax = None
+                        lstmin = None
+                        lstmax = None
                     try:
                         note = t.note.pyval
                     except:
@@ -157,7 +157,7 @@ class ObsProposal(object):
                     self.temp_param.append([
                         sg_id, sg_name, self.obsproject_uid,
                         starttime, endtime, allowedmargin, allowedmargin_unit,
-                        repeats, lSTMin, lSTMax, note, isavoidconstraint,
+                        repeats, lstmin, lstmax, note, isavoidconstraint,
                         priority, fixedstart
                     ])
 
@@ -168,10 +168,10 @@ class ObsProposal(object):
             calspecial = True
 
         spectral = sg.SpectralSetupParameters
-        repFreq = convert_ghz(
+        repfreq = convert_ghz(
             performance.representativeFrequency.pyval,
             performance.representativeFrequency.attrib['unit'])
-        repFreqSepc = convert_ghz(
+        repfreq_spec = convert_ghz(
             spectral.representativeFrequency.pyval,
             spectral.representativeFrequency.attrib['unit'])
 
@@ -179,12 +179,12 @@ class ObsProposal(object):
         type_pol = spectral.attrib['type']
         specscan = spectral.findall(prj + 'SpectralScan')
         try:
-            singleContFreq = convert_ghz(
+            singlecont_freq = convert_ghz(
                 spectral.singleContinuumFrequency.pyval,
                 spectral.singleContinuumFrequency.attrib['unit']
             )
         except:
-            singleContFreq = None
+            singlecont_freq = None
 
         spw = spectral.findall(prj + 'ScienceSpectralWindow')
         is_spec_scan = False
@@ -193,56 +193,56 @@ class ObsProposal(object):
             for n in range(len(specscan)):
                 ss = specscan[n]
                 ss_index = ss['index'].pyval
-                startFrequency = convert_ghz(
+                startfrequency = convert_ghz(
                     ss.startFrequency.pyval,
                     ss.startFrequency.attrib['unit'])
-                endFrequency = convert_ghz(
+                endfrequency = convert_ghz(
                     ss.endFrequency.pyval,
                     ss.endFrequency.attrib['unit'])
                 bandwidth = convert_ghz(
                     ss.bandWidth.pyval,
                     ss.bandWidth.attrib['unit']
                 )
-                specRes = convert_ghz(
+                specres = convert_ghz(
                     ss.spectralResolution.pyval,
                     ss.spectralResolution.attrib['unit']
                 )
-                isSkyFreq = ss.isSkyFrequency.pyval
+                isskyfreq = ss.isSkyFrequency.pyval
 
                 self.sg_specscan.append([
-                    sg_id, ss_index, startFrequency, endFrequency,
-                    bandwidth, specRes, isSkyFreq
+                    sg_id, ss_index, startfrequency, endfrequency,
+                    bandwidth, specres, isskyfreq
                 ])
 
         else:
             for n in range(len(spw)):
                 sp = spw[n]
                 spw_index = sp['index'].pyval
-                transitionName = sp.transitionName.pyval
-                centerFrequency = convert_ghz(
+                transition_name = sp.transitionName.pyval
+                centerfrequency = convert_ghz(
                     sp.centerFrequency.pyval,
                     sp.centerFrequency.attrib['unit']
                 )
-                bandWidth = convert_ghz(
+                bandwidth = convert_ghz(
                     sp.bandWidth.pyval,
                     sp.bandWidth.attrib['unit']
                 )
-                spectralResolution = convert_ghz(
+                spectral_resolution = convert_ghz(
                     sp.spectralResolution.pyval,
                     sp.spectralResolution.attrib['unit']
                 )
-                representativeWin = sp.representativeWindow.pyval
-                isSkyFreq = sp.isSkyFrequency.pyval
-                groupIndex = sp.groupIndex.pyval
+                representative_win = sp.representativeWindow.pyval
+                isskyfreq = sp.isSkyFrequency.pyval
+                group_index = sp.groupIndex.pyval
                 self.sg_specwindows.append([
-                    sg_id, spw_index, transitionName, centerFrequency,
-                    bandWidth, spectralResolution, representativeWin,
-                    isSkyFreq, groupIndex
+                    sg_id, spw_index, transition_name, centerfrequency,
+                    bandwidth, spectral_resolution, representative_win,
+                    isskyfreq, group_index
                 ])
 
         # Correct AR and LAS to equivalent resolutions at 100GHz
-        ARcor = ar * repFreq / 100.
-        LAScor = las * repFreq / 100.
+        ar_cor = ar * repfreq / 100.
+        las_cor = las * repfreq / 100.
 
         # set variables that will be filled later. The relevant variable to
         # calculate new minAR and maxAR is two_12m, False if needs one 12m conf.
@@ -256,31 +256,31 @@ class ObsProposal(object):
             c += 1
 
         try:
-            twelveTime = convert_tsec(
+            twelvetime = convert_tsec(
                 sg.estimated12mTime.pyval,
                 sg.estimated12mTime.attrib['unit']) / 3600.
-            ACATime = convert_tsec(
+            acatime = convert_tsec(
                 sg.estimatedACATime.pyval,
                 sg.estimatedACATime.attrib['unit']) / 3600.
-            sevenTime = convert_tsec(
+            seventime = convert_tsec(
                 float(sg.estimated7mTime.pyval),
                 sg.estimated7mTime.attrib['unit']) / 3600.
-            TPTime = convert_tsec(
+            tptime = convert_tsec(
                 sg.estimatedTPTime.pyval,
                 sg.estimatedTPTime.attrib['unit']) / 3600.
         except AttributeError:
-            twelveTime = None
-            ACATime = None
-            sevenTime = None
-            TPTime = None
+            twelvetime = None
+            acatime = None
+            seventime = None
+            tptime = None
 
         # Stores Science Goal parameters in a data frame instance
 
         self.sciencegoals.append([
             sg_id, self.obsproject_uid, ous_id, sg_name, bands, estimatedtime,
-            twelveTime, ACATime, sevenTime, TPTime, ar, las, ARcor,
-            LAScor, sensitivity, useaca, usetp, istimeconstrained, repFreq,
-            repFreqSepc, singleContFreq, calspecial,
+            twelvetime, acatime, seventime, tptime, ar, las, ar_cor,
+            las_cor, sensitivity, useaca, usetp, istimeconstrained, repfreq,
+            repfreq_spec, singlecont_freq, calspecial,
             ispointsource, polarization, is_spec_scan, type_pol, hassb, two_12m,
             num_targets, sg_mode]
         )
@@ -289,12 +289,12 @@ class ObsProposal(object):
 
         tid = sgid + '_' + str(c)
         try:
-            solarSystem = target.attrib['solarSystemObject']
+            solar_system = target.attrib['solarSystemObject']
         except KeyError:
-            solarSystem = None
+            solar_system = None
 
         typetar = target.attrib['type']
-        sourceName = target.sourceName.pyval
+        sourcename = target.sourceName.pyval
         coord = target.sourceCoordinates
         coord_type = coord.attrib['system']
         if coord_type in ['J2000', 'ICRS']:
@@ -319,45 +319,46 @@ class ObsProposal(object):
             dec = convert_deg(coord.findall(val + 'latitude')[0].pyval,
                               coord.findall(val + 'latitude')[0].attrib['unit'])
         try:
-            isMosaic = target.isMosaic.pyval
+            ismosaic = target.isMosaic.pyval
         except AttributeError:
-            isMosaic = None
+            ismosaic = None
 
-        sourceVelocity = target.sourceVelocity
+        sourcevelocity = target.sourceVelocity
         try:
-            centerVelocity = sourceVelocity.findall(
-                val + 'centerVelocity')[0].pyval
-            centerVelocity_units = sourceVelocity.findall(
-                val + 'centerVelocity')[0].attrib['unit']
-            centerVelocity_refSys = sourceVelocity.attrib['referenceSystem']
-            centerVelocity_dopp = sourceVelocity.attrib['dopplerCalcType']
+            centervelocity = sourcevelocity.findall(
+                val + 'centervelocity')[0].pyval
+            centervelocity_units = sourcevelocity.findall(
+                val + 'centervelocity')[0].attrib['unit']
+            centervelocity_refsys = sourcevelocity.attrib['referenceSystem']
+            centervelocity_dopp = sourcevelocity.attrib['dopplerCalcType']
         except:
-            centerVelocity = None
-            centerVelocity_units = None
-            centerVelocity_refSys = None
-            centerVelocity_dopp = None
+            centervelocity = None
+            centervelocity_units = None
+            centervelocity_refsys = None
+            centervelocity_dopp = None
 
         expectedprop = target.ExpectedProperties
-        expectedLineWidth = convert_ghz(
+        expected_linewidth = convert_ghz(
             expectedprop.expectedLineWidth.pyval,
             expectedprop.expectedLineWidth.attrib['unit']
         )
 
         self.sg_targets.append(
-            [tid, obsp_uid, sgid, typetar, solarSystem, sourceName, ra, dec,
-             isMosaic, centerVelocity, centerVelocity_units,
-             centerVelocity_refSys, centerVelocity_dopp, expectedLineWidth])
+            [tid, obsp_uid, sgid, typetar, solar_system, sourcename, ra, dec,
+             ismosaic, centervelocity, centervelocity_units,
+             centervelocity_refsys, centervelocity_dopp, expected_linewidth])
 
-    def get_times(self):
-        try:
-            propf = self.data.ProposalFeedback
-            arrays = propf
-        except:
-            time12 = 0
-            timeACA = 0
-            time7 = 0
-            timetp = 0
-            timebl = 0
+# TODO: Implement get original estimated times from OT
+    # def get_times(self):
+    #     try:
+    #         propf = self.data.ProposalFeedback
+    #         arrays = propf
+    #     except:
+    #         time12 = 0
+    #         timeaca = 0
+    #         time7 = 0
+    #         timetp = 0
+    #         timebl = 0
 
 
 class ObsProject(object):
@@ -411,9 +412,9 @@ class ObsProject(object):
         oussg_list = op.findall(prj + 'ObsUnitSet')
         for oussg in oussg_list:
             groupous_list = oussg.findall(prj + 'ObsUnitSet')
-            OUS_ID = oussg.attrib['entityPartId']
+            ous_id = oussg.attrib['entityPartId']
             ous_name = oussg.name.pyval
-            OBSPROJECT_UID = oussg.ObsProjectRef.attrib['entityId']
+            obsproject_uid = oussg.ObsProjectRef.attrib['entityId']
 
             # Now we iterate over all the children OUS (group ous and member
             # ous) until we find "SchedBlockRef" tags at the member ous
@@ -426,17 +427,19 @@ class ObsProject(object):
                     mous_id = mous.attrib['entityPartId']
                     mous_name = mous.name.pyval
                     try:
+                        # noinspection PyUnusedLocal
                         sblist = mous.findall(prj + 'ObsUnitSet')
-                        SB_UID = mous.SchedBlockRef.attrib['entityId']
+                        # noinspection PyUnusedLocal
+                        sb_uid = mous.SchedBlockRef.attrib['entityId']
                     except AttributeError:
                         continue
                     oucontrol = mous.ObsUnitControl
                     execount = oucontrol.aggregatedExecutionCount.pyval
                     array = mous.ObsUnitControl.attrib['arrayRequested']
                     for sbs in mous.SchedBlockRef:
-                        SB_UID = sbs.attrib['entityId']
+                        sb_uid = sbs.attrib['entityId']
                         self.sg_sb.append(
-                            [SB_UID, OBSPROJECT_UID, ous_name, OUS_ID,
+                            [sb_uid, obsproject_uid, ous_name, ous_id,
                              gous_id, gous_name, mous_id, mous_name, array,
                              execount])
 
@@ -461,6 +464,7 @@ class ObsProject(object):
         return [code, obsproject_uid, obsproposal_uid, obsreview_uid,
                 prj_version, staff_note, is_calibration, is_ddt]
 
+    # noinspection PyAttributeOutsideInit
     def get_sg(self):
         self.obsproject_uid = self.data.ObsProjectEntity.attrib['entityId']
         obsprog = self.data.ObsProgram
@@ -533,7 +537,7 @@ class ObsProject(object):
                         allowedmargin_unit = None
                     try:
                         note = v.note.pyval
-                    except:
+                    except AttributeError:
                         note = None
                     isavoidconstraint = v.isAvoidConstraint.pyval
                     priority = v.priority.pyval
@@ -547,7 +551,7 @@ class ObsProject(object):
                     try:
                         requireddelay = v.requiredDelay.pyval
                         requireddelay_unit = v.requiredDelay.attrib['unit']
-                    except:
+                    except AttributeError:
                         requireddelay = None
                         requireddelay_unit = None
                     self.visits.append([
@@ -573,14 +577,14 @@ class ObsProject(object):
                     except AttributeError:
                         repeats = None
                     try:
-                        lSTMin = t.lSTMin.pyval
-                        lSTMax = t.lSTMax.pyval
-                    except:
-                        lSTMin = None
-                        lSTMax = None
+                        lstmin = t.lSTMin.pyval
+                        lstmax = t.lSTMax.pyval
+                    except AttributeError:
+                        lstmin = None
+                        lstmax = None
                     try:
                         note = t.note.pyval
-                    except:
+                    except AttributeError:
                         note = None
                     isavoidconstraint = t.isAvoidConstraint.pyval
                     priority = t.priority.pyval
@@ -588,7 +592,7 @@ class ObsProject(object):
                     self.temp_param.append([
                         sg_id, sg_name, self.obsproject_uid,
                         starttime, endtime, allowedmargin, allowedmargin_unit,
-                        repeats, lSTMin, lSTMax, note, isavoidconstraint,
+                        repeats, lstmin, lstmax, note, isavoidconstraint,
                         priority, fixedstart
                     ])
 
@@ -599,10 +603,10 @@ class ObsProject(object):
             calspecial = True
 
         spectral = sg.SpectralSetupParameters
-        repFreq = convert_ghz(
+        repfreq = convert_ghz(
             performance.representativeFrequency.pyval,
             performance.representativeFrequency.attrib['unit'])
-        repFreqSepc = convert_ghz(
+        repfreq_spec = convert_ghz(
             spectral.representativeFrequency.pyval,
             spectral.representativeFrequency.attrib['unit'])
 
@@ -610,12 +614,13 @@ class ObsProject(object):
         type_pol = spectral.attrib['type']
         specscan = spectral.findall(prj + 'SpectralScan')
         try:
-            singleContFreq = convert_ghz(
+            singlecontfreq = convert_ghz(
                 spectral.singleContinuumFrequency.pyval,
                 spectral.singleContinuumFrequency.attrib['unit']
             )
-        except:
-            singleContFreq = None
+        except AttributeError:
+            print "Single ContFrequency parse issue"
+            singlecontfreq = None
 
         spw = spectral.findall(prj + 'ScienceSpectralWindow')
         is_spec_scan = False
@@ -624,56 +629,56 @@ class ObsProject(object):
             for n in range(len(specscan)):
                 ss = specscan[n]
                 ss_index = ss['index'].pyval
-                startFrequency = convert_ghz(
+                startfrequency = convert_ghz(
                     ss.startFrequency.pyval,
                     ss.startFrequency.attrib['unit'])
-                endFrequency = convert_ghz(
+                endfrequency = convert_ghz(
                     ss.endFrequency.pyval,
                     ss.endFrequency.attrib['unit'])
                 bandwidth = convert_ghz(
                     ss.bandWidth.pyval,
                     ss.bandWidth.attrib['unit']
                 )
-                specRes = convert_ghz(
+                specres = convert_ghz(
                     ss.spectralResolution.pyval,
                     ss.spectralResolution.attrib['unit']
                 )
-                isSkyFreq = ss.isSkyFrequency.pyval
+                isskyfreq = ss.isSkyFrequency.pyval
 
                 self.sg_specscan.append([
-                    sg_id, ss_index, startFrequency, endFrequency,
-                    bandwidth, specRes, isSkyFreq
+                    sg_id, ss_index, startfrequency, endfrequency,
+                    bandwidth, specres, isskyfreq
                 ])
 
         else:
             for n in range(len(spw)):
                 sp = spw[n]
                 spw_index = sp['index'].pyval
-                transitionName = sp.transitionName.pyval
-                centerFrequency = convert_ghz(
+                transitionname = sp.transitionName.pyval
+                centerfrequency = convert_ghz(
                     sp.centerFrequency.pyval,
                     sp.centerFrequency.attrib['unit']
                 )
-                bandWidth = convert_ghz(
+                bandwidth = convert_ghz(
                     sp.bandWidth.pyval,
                     sp.bandWidth.attrib['unit']
                 )
-                spectralResolution = convert_ghz(
+                spectral_resolution = convert_ghz(
                     sp.spectralResolution.pyval,
                     sp.spectralResolution.attrib['unit']
                 )
-                representativeWin = sp.representativeWindow.pyval
-                isSkyFreq = sp.isSkyFrequency.pyval
-                groupIndex = sp.groupIndex.pyval
+                representative_win = sp.representativeWindow.pyval
+                isskyfreq = sp.isSkyFrequency.pyval
+                groupindex = sp.groupIndex.pyval
                 self.sg_specwindows.append([
-                    sg_id, spw_index, transitionName, centerFrequency,
-                    bandWidth, spectralResolution, representativeWin,
-                    isSkyFreq, groupIndex
+                    sg_id, spw_index, transitionname, centerfrequency,
+                    bandwidth, spectral_resolution, representative_win,
+                    isskyfreq, groupindex
                 ])
 
         # Correct AR and LAS to equivalent resolutions at 100GHz
-        ARcor = ar * repFreq / 100.
-        LAScor = las * repFreq / 100.
+        arcor = ar * repfreq / 100.
+        lascor = las * repfreq / 100.
 
         # set variables that will be filled later. The relevant variable to
         # calculate new minAR and maxAR is two_12m, False if needs one 12m conf.
@@ -687,31 +692,31 @@ class ObsProject(object):
             c += 1
 
         try:
-            twelveTime = convert_tsec(
+            twelvetime = convert_tsec(
                 sg.estimated12mTime.pyval,
                 sg.estimated12mTime.attrib['unit']) / 3600.
-            ACATime = convert_tsec(
+            acatime = convert_tsec(
                 sg.estimatedACATime.pyval,
                 sg.estimatedACATime.attrib['unit']) / 3600.
-            sevenTime = convert_tsec(
+            seventime = convert_tsec(
                 float(sg.estimated7mTime.pyval),
                 sg.estimated7mTime.attrib['unit']) / 3600.
-            TPTime = convert_tsec(
+            tptime = convert_tsec(
                 sg.estimatedTPTime.pyval,
                 sg.estimatedTPTime.attrib['unit']) / 3600.
         except AttributeError:
-            twelveTime = None
-            ACATime = None
-            sevenTime = None
-            TPTime = None
+            twelvetime = None
+            acatime = None
+            seventime = None
+            tptime = None
 
         # Stores Science Goal parameters in a data frame instance
 
         self.sciencegoals.append([
             sg_id, self.obsproject_uid, ous_id, sg_name, bands, estimatedtime,
-            twelveTime, ACATime, sevenTime, TPTime, ar, las, ARcor,
-            LAScor, sensitivity, useaca, usetp, istimeconstrained, repFreq,
-            repFreqSepc, singleContFreq, calspecial,
+            twelvetime, acatime, seventime, tptime, ar, las, arcor,
+            lascor, sensitivity, useaca, usetp, istimeconstrained, repfreq,
+            repfreq_spec, singlecontfreq, calspecial,
             ispointsource, polarization, is_spec_scan, type_pol, hassb, two_12m,
             num_targets, sg_mode]
         )
@@ -720,12 +725,12 @@ class ObsProject(object):
 
         tid = sgid + '_' + str(c)
         try:
-            solarSystem = target.attrib['solarSystemObject']
+            solarsystem = target.attrib['solarSystemObject']
         except KeyError:
-            solarSystem = None
+            solarsystem = None
 
         typetar = target.attrib['type']
-        sourceName = target.sourceName.pyval
+        sourcename = target.sourceName.pyval
         coord = target.sourceCoordinates
         coord_type = coord.attrib['system']
         if coord_type in ['J2000', 'ICRS']:
@@ -750,34 +755,34 @@ class ObsProject(object):
             dec = convert_deg(coord.findall(val + 'latitude')[0].pyval,
                               coord.findall(val + 'latitude')[0].attrib['unit'])
         try:
-            isMosaic = target.isMosaic.pyval
+            ismosaic = target.isMosaic.pyval
         except AttributeError:
-            isMosaic = None
+            ismosaic = None
 
-        sourceVelocity = target.sourceVelocity
+        sourcevelocity = target.sourceVelocity
         try:
-            centerVelocity = sourceVelocity.findall(
-                val + 'centerVelocity')[0].pyval
-            centerVelocity_units = sourceVelocity.findall(
-                val + 'centerVelocity')[0].attrib['unit']
-            centerVelocity_refSys = sourceVelocity.attrib['referenceSystem']
-            centerVelocity_dopp = sourceVelocity.attrib['dopplerCalcType']
-        except:
-            centerVelocity = None
-            centerVelocity_units = None
-            centerVelocity_refSys = None
-            centerVelocity_dopp = None
+            centervelocity = sourcevelocity.findall(
+                val + 'centervelocity')[0].pyval
+            centervelocity_units = sourcevelocity.findall(
+                val + 'centervelocity')[0].attrib['unit']
+            centervelocity_refsys = sourcevelocity.attrib['referenceSystem']
+            centervelocity_dopp = sourcevelocity.attrib['dopplerCalcType']
+        except AttributeError:
+            centervelocity = None
+            centervelocity_units = None
+            centervelocity_refsys = None
+            centervelocity_dopp = None
 
         expectedprop = target.ExpectedProperties
-        expectedLineWidth = convert_ghz(
+        expected_linewidth = convert_ghz(
             expectedprop.expectedLineWidth.pyval,
             expectedprop.expectedLineWidth.attrib['unit']
         )
 
         self.sg_targets.append(
-            [tid, obsp_uid, sgid, typetar, solarSystem, sourceName, ra, dec,
-             isMosaic, centerVelocity, centerVelocity_units,
-             centerVelocity_refSys, centerVelocity_dopp, expectedLineWidth])
+            [tid, obsp_uid, sgid, typetar, solarsystem, sourcename, ra, dec,
+             ismosaic, centervelocity, centervelocity_units,
+             centervelocity_refsys, centervelocity_dopp, expected_linewidth])
 
 
 # noinspection PyBroadException
@@ -823,14 +828,14 @@ class SchedBlock(object):
         preconditions = self.data.Preconditions
         weather = preconditions.findall('.//' + prj + 'WeatherConstraints')[0]
         ouc = self.data.find('.//' + prj + 'ObsUnitControl')
-        estimatedTimet = ouc.find('.//' + prj + 'estimatedExecutionTime')
-        estimatedTime = convert_thour(
-            estimatedTimet.pyval,
-            estimatedTimet.attrib['unit'])
-        maximumTimet = ouc.find('.//' + prj + 'maximumTime')
-        maximumTime = convert_thour(
-            maximumTimet.pyval,
-            maximumTimet.attrib['unit'])
+        estimated_time_tag = ouc.find('.//' + prj + 'estimatedExecutionTime')
+        estimatedtime = convert_thour(
+            estimated_time_tag.pyval,
+            estimated_time_tag.attrib['unit'])
+        maximum_time_tag = ouc.find('.//' + prj + 'maximumtime')
+        maximumtime = convert_thour(
+            maximum_time_tag.pyval,
+            maximum_time_tag.attrib['unit'])
 
         try:
             # noinspection PyUnusedLocal
@@ -996,7 +1001,7 @@ class SchedBlock(object):
                 name, note, status, float(repfreq), band, array,
                 float(ra), float(dec), float(minar_old), float(maxar_old),
                 int(execount), ispolarization, float(maxpwv),
-                type12m, estimatedTime, maximumTime
+                type12m, estimatedtime, maximumtime
                 ), rf, tar, spc, bb, spw, scpar, acpar, bcpar, pcpar, ordtar
 
     @staticmethod
@@ -1113,13 +1118,13 @@ class SchedBlock(object):
     def read_baseband(spectconf, freqconf, sbuid):
         bbl = []
 
-        rest_freq = convert_ghz(freqconf.restFrequency.pyval,
-                                freqconf.restFrequency.attrib['unit'])
-        trans_name = freqconf.transitionName.pyval
-        lo1_freq = convert_ghz(freqconf.lO1Frequency.pyval,
-                               freqconf.lO1Frequency.attrib['unit'])
-        band = freqconf.attrib['receiverBand']
-        doppler_ref = freqconf.attrib['dopplerReference']
+        # rest_freq = convert_ghz(freqconf.restFrequency.pyval,
+        #                         freqconf.restFrequency.attrib['unit'])
+        # trans_name = freqconf.transitionName.pyval
+        # lo1_freq = convert_ghz(freqconf.lO1Frequency.pyval,
+        #                        freqconf.lO1Frequency.attrib['unit'])
+        # band = freqconf.attrib['receiverBand']
+        # doppler_ref = freqconf.attrib['dopplerReference']
 
         for baseband in range(len(freqconf.BaseBandSpecification)):
             bb = freqconf.BaseBandSpecification[baseband]
@@ -1144,70 +1149,70 @@ class SchedBlock(object):
         try:
             for baseband in range(len(correconf.BLBaseBandConfig)):
                 bb = correconf.BLBaseBandConfig[baseband]
-                bbRef = bb.BaseBandSpecificationRef.attrib['partId']
+                bbref = bb.BaseBandSpecificationRef.attrib['partId']
                 for sw in range(len(bb.BLSpectralWindow)):
                     spw = bb.BLSpectralWindow[sw]
-                    poln_prod = spw.attrib['polnProducts']
-                    sideBand = spw.attrib['sideBand']
-                    windowsFunction = spw.attrib['windowFunction']
+                    # poln_prod = spw.attrib['polnProducts']
+                    sideband = spw.attrib['sideband']
+                    windows_function = spw.attrib['windowFunction']
                     name = spw.name.pyval
-                    centerFreq_unit = spw.centerFrequency.attrib['unit']
-                    centerFreq = convert_ghz(
-                        spw.centerFrequency.pyval, centerFreq_unit)
-                    averagingFactor = spw.spectralAveragingFactor.pyval
-                    effectiveBandwidth_unit = spw.effectiveBandwidth.attrib[
+                    centerfreq_unit = spw.centerFrequency.attrib['unit']
+                    centerfreq = convert_ghz(
+                        spw.centerFrequency.pyval, centerfreq_unit)
+                    averagingfactor = spw.spectralAveragingFactor.pyval
+                    effectivebandwidth_unit = spw.effectiveBandwidth.attrib[
                         'unit']
-                    effectiveBandwidth = convert_ghz(
-                        spw.effectiveBandwidth.pyval, effectiveBandwidth_unit)
-                    effectiveChannels = spw.effectiveNumberOfChannels.pyval
+                    effectivebandwidth = convert_ghz(
+                        spw.effectiveBandwidth.pyval, effectivebandwidth_unit)
+                    effective_channels = spw.effectiveNumberOfChannels.pyval
                     use = spw.useThisSpectralWindow.pyval
                     try:
                         spl = spw.SpectralLine
-                        line_restFreq = convert_ghz(
+                        line_restfreq = convert_ghz(
                             spl.restFrequency.pyval,
                             spl.restFrequency.attrib['unit'])
                         line_name = spl.transition.pyval
                     except:
-                        line_restFreq = 0
+                        line_restfreq = 0
                         line_name = 'None'
 
                     spwl.append(
-                        (bbRef, sbuid, name, sideBand, windowsFunction,
-                         centerFreq, averagingFactor, effectiveBandwidth,
-                         effectiveChannels, line_restFreq, line_name, use))
+                        (bbref, sbuid, name, sideband, windows_function,
+                         centerfreq, averagingfactor, effectivebandwidth,
+                         effective_channels, line_restfreq, line_name, use))
 
         except AttributeError:
             for baseband in range(len(correconf.ACABaseBandConfig)):
                 bb = correconf.ACABaseBandConfig[baseband]
-                bbRef = bb.BaseBandSpecificationRef.attrib['partId']
+                bbref = bb.BaseBandSpecificationRef.attrib['partId']
                 for sw in range(len(bb.ACASpectralWindow)):
                     spw = bb.ACASpectralWindow[sw]
-                    sideBand = spw.attrib['sideBand']
-                    windowsFunction = spw.attrib['windowFunction']
+                    sideband = spw.attrib['sideband']
+                    windows_function = spw.attrib['windowFunction']
                     name = spw.name.pyval
-                    centerFreq_unit = spw.centerFrequency.attrib['unit']
-                    centerFreq = convert_ghz(
-                        spw.centerFrequency.pyval, centerFreq_unit)
-                    averagingFactor = spw.spectralAveragingFactor.pyval
-                    effectiveBandwidth_unit = spw.effectiveBandwidth.attrib[
+                    centerfreq_unit = spw.centerFrequency.attrib['unit']
+                    centerfreq = convert_ghz(
+                        spw.centerFrequency.pyval, centerfreq_unit)
+                    averagingfactor = spw.spectralAveragingFactor.pyval
+                    effectivebandwidth_unit = spw.effectiveBandwidth.attrib[
                         'unit']
-                    effectiveBandwidth = convert_ghz(
-                        spw.effectiveBandwidth.pyval, effectiveBandwidth_unit)
-                    effectiveChannels = spw.effectiveNumberOfChannels.pyval
+                    effectivebandwidth = convert_ghz(
+                        spw.effectiveBandwidth.pyval, effectivebandwidth_unit)
+                    effective_channels = spw.effectiveNumberOfChannels.pyval
                     use = spw.useThisSpectralWindow.pyval
                     try:
                         spl = spw.SpectralLine
-                        line_restFreq = convert_ghz(
+                        line_restfreq = convert_ghz(
                             spl.restFrequency.pyval,
                             spl.restFrequency.attrib['unit'])
                         line_name = spl.transition.pyval
                     except:
-                        line_restFreq = 0
+                        line_restfreq = 0
                         line_name = 'None'
                     spwl.append(
-                        (bbRef, sbuid, name, sideBand, windowsFunction,
-                         centerFreq, averagingFactor, effectiveBandwidth,
-                         effectiveChannels, line_restFreq, line_name, use))
+                        (bbref, sbuid, name, sideband, windows_function,
+                         centerfreq, averagingfactor, effectivebandwidth,
+                         effective_channels, line_restfreq, line_name, use))
         return spwl
 
 
@@ -1231,9 +1236,9 @@ class ObsReview(object):
         oussg_list = oplan.findall(prj + 'ObsUnitSet')
         for oussg in oussg_list:
             groupous_list = oussg.findall(prj + 'ObsUnitSet')
-            OUS_ID = oussg.attrib['entityPartId']
+            ous_id = oussg.attrib['entityPartId']
             ous_name = oussg.name.pyval
-            OBSPROJECT_UID = oussg.ObsProjectRef.attrib['entityId']
+            obsproject_uid = oussg.ObsProjectRef.attrib['entityId']
 
             # Now we iterate over all the children OUS (group ous and member
             # ous) until we find "SchedBlockRef" tags at the member ous
@@ -1246,16 +1251,18 @@ class ObsReview(object):
                     mous_id = mous.attrib['entityPartId']
                     mous_name = mous.name.pyval
                     try:
+                        # noinspection PyUnusedLocal
                         sblist = mous.findall(prj + 'ObsUnitSet')
-                        SB_UID = mous.SchedBlockRef.attrib['entityId']
+                        # noinspection PyUnusedLocal
+                        sb_uid = mous.SchedBlockRef.attrib['entityId']
                     except AttributeError:
                         continue
                     oucontrol = mous.ObsUnitControl
                     execount = oucontrol.aggregatedExecutionCount.pyval
                     array = mous.ObsUnitControl.attrib['arrayRequested']
                     for sbs in mous.SchedBlockRef:
-                        SB_UID = sbs.attrib['entityId']
+                        sb_uid = sbs.attrib['entityId']
                         self.sg_sb.append(
-                            [SB_UID, OBSPROJECT_UID, ous_name, OUS_ID,
+                            [sb_uid, obsproject_uid, ous_name, ous_id,
                              gous_id, gous_name, mous_id, mous_name, array,
                              execount])
