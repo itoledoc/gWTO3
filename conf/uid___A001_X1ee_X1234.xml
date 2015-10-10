@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prj:ObsProject xmlns:val="Alma/ValueTypes" xmlns:qlph="Alma/pipelineql/QlPhaseSummary" xmlns:sbs="Alma/Scheduling/SBStatus" xmlns:qlpt="Alma/pipelineql/QlPointingSummary" xmlns:ent="Alma/CommonEntity" xmlns:ouss="Alma/Scheduling/OUSStatus" xmlns:oat="Alma/ObsPrep/ObsAttachment" xmlns:sbl="Alma/ObsPrep/SchedBlock" xmlns:qls="Alma/pipelineql/QuickLookSummary" xmlns:qlfc="Alma/pipelineql/QlFocusSummary" xmlns:orv="Alma/ObsPrep/ObsReview" xmlns:qlatm="Alma/pipelineql/QlAtmosphereSummary" xmlns:prp="Alma/ObsPrep/ObsProposal" xmlns:prj="Alma/ObsPrep/ObsProject" xmlns:ps="Alma/Scheduling/ProjectStatus" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" schemaVersion="13" revision="13" almatype="APDM::ObsProject" status="Phase1Submitted" xsi:type="prj:ObsProject">
+  <prj:ObsProjectEntity entityId="uid://A001/X1ee/X1234" entityIdEncrypted="-- id encryption not implemented --" entityTypeName="ObsProject" schemaVersion="13" documentVersion="1" timestamp="2015-07-31T03:03:43.422"/>
+  <prj:ObsProposalRef entityId="uid://A001/X1ee/X1235" entityTypeName="ObsProposal" documentVersion="1"/>
+  <prj:ObsReviewRef entityId="uid://A001/X200/X1107" entityTypeName="ObsReview" documentVersion="1"/>
+  <prj:ProjectStatusRef entityId="uid://A001/X1ee/X1238" entityTypeName="ProjectStatus" documentVersion="1"/>
+  <prj:projectName>Shedding light on disc dispersal: testing thermal sweeping with non accreting transition discs</prj:projectName>
+  <prj:pI>rosotti</prj:pI>
+  <prj:version>0</prj:version>
+  <prj:code>2015.1.01468.S</prj:code>
+  <prj:timeOfCreation>2015-04-23 14:01:53</prj:timeOfCreation>
+  <prj:manualMode>false</prj:manualMode>
+  <prj:simulationMode>false</prj:simulationMode>
+  <prj:isCommissioning>false</prj:isCommissioning>
+  <prj:isCalibration>false</prj:isCalibration>
+  <prj:letterGrade>C</prj:letterGrade>
+  <prj:scientificRank>999999</prj:scientificRank>
+  <prj:scientificScore>0.0</prj:scientificScore>
+  <prj:staffProjectNote/>
+  <prj:taPhase2Comments/>
+  <prj:taMainComments>There are no major technical issues with this proposal.</prj:taMainComments>
+  <prj:consensusReport>Proposal strengths:
+The authors propose a test for `thermal sweeping&apos; in a sample of non-accreting disks in Orion. The final phase of disk dispersal by photoevaporation is thought to occur very briefly, on 1E4yr timescales, once the mass of the disk drops below a certain threshold. These observations aim at testing the theory by measuring the disk masses.
+
+Proposal weaknesses:
+How accurate is the threshold, given the uncertainties on the disk parameters? What are the units for the quoted threshold masses? What about biases in the diagnostics, such as CO condensation? What about well known transitions disks with low accretion rates, such as the case of PDS70, with 1E-9Msun/yr, or PZ99 J160421, with &lt;1E-11Msun/yr? Both of these objects would be labelled as `non-accreting&apos;, and are far better studied and resolved than this Orion sample. Can these two objects be used to test the theory? These questions should have been addressed in the proposal.
+
+Suggestions for improvement:
+Depending on the location of the 3 objects in
+Orion, the CO line profiles can be strongly corrupted by
+confusion with the molecular cloud. For this very interesting 
+project, finding nearby old protoplanetary disks  would be better. 
+A deeper analysis of the existing ALMA data would be welcome 
+to see whether some objects already observed do not match 
+the requested properties (no accretion). Moreover, a strict definition of 
+non accreting transition disks (threshold) would have been welcome.
+CO chemistry may be more complicated than assumed to make an accurate 
+surface density determination.
+
+Overall evaluation:
+Interesting astrophysics, but the proposed test should be better designed.</prj:consensusReport>
+  <prj:ObsProgram>
+    <prj:ObsPlan status="Phase2Submitted" entityPartId="X1683779955" almatype="APDM::ObsUnitSet">
+      <prj:name>ObsUnitSet</prj:name>
+      <prj:note/>
+      <prj:ObsUnitControl arrayRequested="TWELVE-M">
+        <prj:maximumTime unit="min">0.0</prj:maximumTime>
+        <prj:userPriority>0</prj:userPriority>
+        <prj:estimatedExecutionTime unit="min">0.0</prj:estimatedExecutionTime>
+        <prj:tacPriority>0</prj:tacPriority>
+        <prj:aggregatedExecutionCount>0</prj:aggregatedExecutionCount>
+        <prj:CalibrationRequirements>
+          <prj:pointingAccuracy unit="arcsec">0.0</prj:pointingAccuracy>
+        </prj:CalibrationRequirements>
+      </prj:ObsUnitControl>
+      <prj:ObsProjectRef entityId="uid://A001/X1ee/X1234" entityTypeName="ObsProject" documentVersion="1"/>
+      <prj:scienceProcessingScript/>
+      <prj:runSciencePipeline>false</prj:runSciencePipeline>
+      <prj:OUSStatusRef entityId="uid://A001/X1ee/X1239" entityTypeName="OUSStatus" documentVersion="1"/>
+    </prj:ObsPlan>
+  </prj:ObsProgram>
+  <prj:SubmissionRecord>
+    <prj:submitter>rosotti</prj:submitter>
+    <prj:submissionTime>2015-04-23 14:01:53</prj:submissionTime>
+  </prj:SubmissionRecord>
+  <prj:SubmissionRecord>
+    <prj:submitter>rosotti</prj:submitter>
+    <prj:submissionTime>2015-04-23 14:42:43</prj:submissionTime>
+  </prj:SubmissionRecord>
+  <prj:SubmissionRecord>
+    <prj:submitter>rosotti</prj:submitter>
+    <prj:submissionTime>2015-04-23 14:47:56</prj:submissionTime>
+  </prj:SubmissionRecord>
+  <prj:SubmissionRecord>
+    <prj:submitter>prodtest</prj:submitter>
+    <prj:submissionTime>2015-05-01 22:27:08</prj:submissionTime>
+  </prj:SubmissionRecord>
+  <prj:SubmissionRecord>
+    <prj:submitter>prodtest</prj:submitter>
+    <prj:submissionTime>2015-07-31 03:03:42</prj:submissionTime>
+  </prj:SubmissionRecord>
+  <prj:SubmissionRecord>
+    <prj:submitter>prodtest</prj:submitter>
+    <prj:submissionTime>2015-08-03 21:34:52</prj:submissionTime>
+  </prj:SubmissionRecord>
+</prj:ObsProject>
