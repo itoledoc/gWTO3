@@ -767,7 +767,7 @@ class ObsProject(object):
                 val + 'centervelocity')[0].attrib['unit']
             centervelocity_refsys = sourcevelocity.attrib['referenceSystem']
             centervelocity_dopp = sourcevelocity.attrib['dopplerCalcType']
-        except AttributeError:
+        except IndexError:
             centervelocity = None
             centervelocity_units = None
             centervelocity_refsys = None
@@ -832,7 +832,7 @@ class SchedBlock(object):
         estimatedtime = convert_thour(
             estimated_time_tag.pyval,
             estimated_time_tag.attrib['unit'])
-        maximum_time_tag = ouc.find('.//' + prj + 'maximumtime')
+        maximum_time_tag = ouc.find('.//' + prj + 'maximumTime')
         maximumtime = convert_thour(
             maximum_time_tag.pyval,
             maximum_time_tag.attrib['unit'])
@@ -1153,7 +1153,7 @@ class SchedBlock(object):
                 for sw in range(len(bb.BLSpectralWindow)):
                     spw = bb.BLSpectralWindow[sw]
                     # poln_prod = spw.attrib['polnProducts']
-                    sideband = spw.attrib['sideband']
+                    sideband = spw.attrib['sideBand']
                     windows_function = spw.attrib['windowFunction']
                     name = spw.name.pyval
                     centerfreq_unit = spw.centerFrequency.attrib['unit']
@@ -1187,7 +1187,7 @@ class SchedBlock(object):
                 bbref = bb.BaseBandSpecificationRef.attrib['partId']
                 for sw in range(len(bb.ACASpectralWindow)):
                     spw = bb.ACASpectralWindow[sw]
-                    sideband = spw.attrib['sideband']
+                    sideband = spw.attrib['sideBand']
                     windows_function = spw.attrib['windowFunction']
                     name = spw.name.pyval
                     centerfreq_unit = spw.centerFrequency.attrib['unit']

@@ -388,3 +388,22 @@ def runsim(date_df, df, alma):
                 ti += dt.timedelta(minutes=10)
 
     return dft, out1
+
+
+def find_nearest(array, value):
+    idx = (np.abs(array - value)).argmin()
+    return array[idx], idx, (np.abs(array - value)).min()
+
+
+def find_array(value, listconf):
+    closest = 90000000.
+    n = 0
+    array = -20
+    for c in listconf:
+        a = find_nearest(c, value)
+        if a[2] < closest:
+            closest = a[2]
+            array = n
+        n += 1
+
+    return array
