@@ -86,7 +86,7 @@ class Database(object):
                        "Rejected"]
         self.verbose = verbose
         self.obsproject = pd.DataFrame()
-        self.ares = ARes.ArrayRes()
+        self.ares = ARes.ArrayRes(self.wto_path + 'conf/')
 
         # self.grades = pd.read_table(
         #     self.wto_path + 'conf/DC_final modified gradeC.csv', sep=',')
@@ -269,9 +269,6 @@ class Database(object):
         self.update_sciencegoal(obsproject_uid)
         self.update_sblock_meta(obsproject_uid)
         self.update_schedblock(obsproject_uid)
-
-        print "hehe!"
-
         self.schedblocks_temp['assumedconf_ar_ot'] = (
             self.schedblocks_temp.minAR_ot / 0.9) * \
             self.schedblocks_temp.repfreq / 100.
@@ -425,8 +422,6 @@ class Database(object):
         pcpart_arr = np.array(pcpart, dtype=object)
         ordtart_arr = np.array(ordtart, dtype=object)
 
-        print sb_uids, rst_arr, rst
-
         self.schedblocks_temp.drop(
             self.schedblocks_temp.query('SB_UID in @sb_uids').index.values,
             inplace=True, errors='ignore')
@@ -439,7 +434,6 @@ class Database(object):
                      'isPolarization', 'maxPWVC', 'array12mType',
                      'estimatedTime', 'maximumTime'],
         ).set_index('SB_UID', drop=False)
-        print rst_df
         self.schedblocks_temp = self.schedblocks_temp.append(rst_df)
         tof = ['repfreq', 'RA', 'DEC', 'minAR_ot', 'maxAR_ot', 'maxPWVC']
         self.schedblocks_temp[tof] = self.schedblocks_temp[tof].astype(float)
@@ -532,7 +526,7 @@ class Database(object):
             inplace=True, errors='ignore')
         baseband = pd.DataFrame(
             bbt_arr,
-            columns=['basebandRef', 'spectralConf', 'SB_UID', 'Name',
+            columns=['basebandRef', 'specRef', 'SB_UID', 'Name',
                      'CenterFreq', 'FreqSwitching', 'l02Freq',
                      'Weighting', 'useUDB']
         ).set_index('basebandRef', drop=False)
@@ -567,18 +561,6 @@ class Database(object):
         self.df1 = pd.DataFrame(
             self.cursor.fetchall(),
             columns=[rec[0] for rec in self.cursor.description])
-
-        self.cursor.execute(self.sql_sbstates)
-        self.sb_status = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description]
-        ).set_index('SB_UID', drop=False)
-
-        self.cursor.execute(self.sqlqa0)
-        self.aqua_execblock = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description]
-        ).set_index('SB_UID', drop=False)
 
         self.cursor.execute(self.sql_executive)
         self.executive = pd.DataFrame(
@@ -955,7 +937,7 @@ class Database(object):
 
         self.baseband = pd.DataFrame(
             bbt_arr,
-            columns=['basebandRef', 'spectralConf', 'SB_UID', 'Name',
+            columns=['basebandRef', 'specRef', 'SB_UID', 'Name',
                      'CenterFreq', 'FreqSwitching', 'l02Freq',
                      'Weighting', 'useUDB']
         ).set_index('basebandRef', drop=False)

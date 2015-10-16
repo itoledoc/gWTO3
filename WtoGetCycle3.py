@@ -69,7 +69,7 @@ def get_all_apdm(cursor, data_path, obsproject_uids):
             try:
                 obsrevuid = obsparse.data.ObsReviewRef.attrib['entityId']
             except AttributeError:
-                print("Obsproject %s has no ObsReviewRef" % r)
+                # print("Obsproject %s has no ObsReviewRef" % r)
                 continue
 
             cursor.execute(

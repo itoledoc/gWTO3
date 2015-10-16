@@ -35,7 +35,7 @@ DEG2RAD = math.pi/180.
 
 class ArrayRes:
 
-    def __init__(self):
+    def __init__(self, path):
                       
         self.res = [3.4, 1.8, 1.2, 0.7, 0.5, 0.3, 0.1, 0.075]
         self.las = [25.3, 25.2, 25.2, 9.6, 7.8, 4.8, 1.5, 1.1]           
@@ -52,39 +52,40 @@ class ArrayRes:
             0: "C36-1", 1: "C36-2", 2: "C36-3", 3: "C36-4", 4: "C36-5",
             5: "C36-6", 6: "C36-7", 7: "C36-8"}
         self.matchArrayCycle3 = {3: 0, 4: 1, 5: 2}
+        self.path = path
         self.read_cycle3()
 
     def read_cycle3(self):
     
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-1.pickle')
+        f = open(self.path + 'Resolution-C36-1.pickle')
         self.data.append(pickle.load(f))
         f.close()
         
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-2.pickle')
+        f = open(self.path + 'Resolution-C36-2.pickle')
         self.data.append(pickle.load(f))
         f.close()
         
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-3.pickle')
+        f = open(self.path + 'Resolution-C36-3.pickle')
         self.data.append(pickle.load(f))
         f.close()
         
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-4.pickle')
+        f = open(self.path + 'Resolution-C36-4.pickle')
         self.data.append(pickle.load(f))
         f.close()
         
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-5.pickle')
+        f = open(self.path + 'Resolution-C36-5.pickle')
         self.data.append(pickle.load(f))
         f.close()
         
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-6.pickle')
+        f = open(self.path + 'Resolution-C36-6.pickle')
         self.data.append(pickle.load(f))
         f.close()
         
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-7.pickle')
+        f = open(self.path + 'Resolution-C36-7.pickle')
         self.data.append(pickle.load(f))
         f.close()
     
-        f = open('/home/itoledo/Work/APA3/conf/Resolution-C36-8.pickle')
+        f = open(self.path + 'Resolution-C36-8.pickle')
         self.data.append(pickle.load(f))
         f.close()
 
