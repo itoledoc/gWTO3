@@ -407,3 +407,57 @@ def find_array(value, listconf):
         n += 1
 
     return array
+
+
+def read_ephemeris(ephemeris, date):
+    # TODO: is the ephemeris file fixed in col positions?
+
+    """
+
+    :param ephemeris:
+    :param date:
+    :return:
+    """
+    in_data = False
+    now = date
+    month_ints = {
+        'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+        'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
+    found = False
+    for line in ephemeris.split('\n'):
+        if line.startswith('$$SOE'):
+            in_data = True
+            c1 = 0
+        elif line.startswith('$$EOE') or line.startswith(' $$EOE'):
+            if not found:
+                ra = ephem.hours('00:00:00')
+                dec = ephem.degrees('00:00:00')
+                ephe = False
+                return ra, dec, ephe
+        elif in_data:
+            datestr = line[1:6] + str(month_ints[line[6:9]]) + line[9:18]
+            date = dt.datetime.strptime(datestr, '%Y-%m-%d %H:%M')
+            if now.datetime() > date:
+                data = line
+                found = False
+                # noinspection PyUnboundLocalVariable
+                c1 += 1
+            else:
+                # noinspection PyUnboundLocalVariable
+                if c1 == 0:
+
+                    ra = ephem.hours('00:00:00')
+                    dec = ephem.degrees('00:00:00')
+                    ephe = False
+                    return ra, dec, ephe
+                # noinspection PyUnboundLocalVariable
+                ra_temp = data[23:36].strip()
+                dec_temp = data[37:50].strip()
+                if len(ra_temp.split()) > 3:
+                    ra_temp = data[23:34].strip()
+                    dec_temp = data[35:46].strip()
+                ra = ephem.hours(ra_temp.replace(' ', ':'))
+                dec = ephem.degrees(dec_temp.replace(' ', ':'))
+                ephe = True
+                print(ra, dec, ephe, now)
+                return pd.np.degrees(ra), pd.np.degrees(dec), ephe

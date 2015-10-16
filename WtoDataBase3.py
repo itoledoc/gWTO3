@@ -132,8 +132,9 @@ class Database(object):
         # Query QA0 flags from AQUA tables
         self.sqlqa0 = str(
             "SELECT SCHEDBLOCKUID as SB_UID, QA0STATUS, STARTTIME, ENDTIME,"
-            "EXECBLOCKUID, EXECFRACTION "
-            "FROM ALMA.AQUA_EXECBLOCK "
+            "EXECBLOC"
+            "KUID, EXECFRACTION "
+            "FROM ALMA.AQUA_V_EXECBLOCK "
             "WHERE regexp_like (OBSPROJECTCODE, '^201[35]\..*\.[AST]')")
 
         self.cursor.execute(self.sqlqa0)
@@ -312,7 +313,7 @@ class Database(object):
                      'bandwidth', 'spectralRes', 'isRepSPW', 'isSkyFreq',
                      'group_index']
         )
-        self.sg_spw.append(spw, ignore_index=True)
+        self.sg_spw = self.sg_spw.append(spw, ignore_index=True)
 
         if len(obspropparse.sg_specscan) > 0:
             self.sg_specscan.drop(
@@ -323,7 +324,8 @@ class Database(object):
                 columns=['SG_ID', 'SSCAN_ID', 'startFrequency', 'endFrequency',
                          'bandwidth', 'spectralRes', 'isSkyFreq']
             )
-            self.sg_specscan.append(specscan, ignore_index=True)
+            self.sg_specscan =  self.sg_specscan.append(
+                specscan, ignore_index=True)
 
         if len(obspropparse.visits) > 0:
             self.visits.drop(
@@ -337,7 +339,7 @@ class Database(object):
                     'visit_id', 'prev_visit_id', 'requiredDelay',
                     'requiredDelay_unit', 'fixedStart']
             )
-            self.visits.append(visit, ignore_index=True)
+            self.visits = self.visits.append(visit, ignore_index=True)
 
         if len(obspropparse.temp_param) > 0:
             self.temp_param.drop(
@@ -351,7 +353,7 @@ class Database(object):
                     'LSTmax', 'note', 'avoidConstraint', 'priority',
                     'fixedStart']
             )
-            self.temp_param.append(temppar, ignore_index=True)
+            self.temp_param = self.temp_param.append(temppar, ignore_index=True)
 
     def update_sblock_meta(self, obsproject_uid):
         r = [0, None]
@@ -423,6 +425,8 @@ class Database(object):
         pcpart_arr = np.array(pcpart, dtype=object)
         ordtart_arr = np.array(ordtart, dtype=object)
 
+        print sb_uids, rst_arr, rst
+
         self.schedblocks_temp.drop(
             self.schedblocks_temp.query('SB_UID in @sb_uids').index.values,
             inplace=True, errors='ignore')
@@ -435,7 +439,8 @@ class Database(object):
                      'isPolarization', 'maxPWVC', 'array12mType',
                      'estimatedTime', 'maximumTime'],
         ).set_index('SB_UID', drop=False)
-        self.schedblocks_temp.append(rst_df)
+        print rst_df
+        self.schedblocks_temp = self.schedblocks_temp.append(rst_df)
         tof = ['repfreq', 'RA', 'DEC', 'minAR_ot', 'maxAR_ot', 'maxPWVC']
         self.schedblocks_temp[tof] = self.schedblocks_temp[tof].astype(float)
         self.schedblocks_temp[['execount']] = self.schedblocks_temp[
@@ -449,7 +454,7 @@ class Database(object):
             columns=['paramRef', 'SB_UID', 'parName', 'representative_bw',
                      'sensitivy', 'sensUnit', 'intTime', 'subScanDur']
         ).set_index('paramRef', drop=False)
-        self.scienceparam.append(scienceparam)
+        self.scienceparam = self.scienceparam.append(scienceparam)
 
         self.ampcalparam.drop(
             self.ampcalparam.query('SB_UID in @sb_uids').index.values,
@@ -459,7 +464,7 @@ class Database(object):
             columns=['paramRef', 'SB_UID', 'parName', 'intTime',
                      'subScanDur']
         ).set_index('paramRef', drop=False)
-        self.ampcalparam.append(ampcalparam)
+        self.ampcalparam = self.ampcalparam.append(ampcalparam)
 
         self.bbandcalparam.drop(
             self.bbandcalparam.query('SB_UID in @sb_uids').index.values,
@@ -469,7 +474,7 @@ class Database(object):
             columns=['paramRef', 'SB_UID', 'parName', 'intTime',
                      'subScanDur']
         ).set_index('paramRef', drop=False)
-        self.bbandcalparam.append(bbandcalparam)
+        self.bbandcalparam = self.bbandcalparam.append(bbandcalparam)
 
         self.phasecalparam.drop(
             self.phasecalparam.query('SB_UID in @sb_uids').index.values,
@@ -479,7 +484,7 @@ class Database(object):
             columns=['paramRef', 'SB_UID', 'parName', 'intTime',
                      'subScanDur']
         ).set_index('paramRef', drop=False)
-        self.phasecalparam.append(phasecalparam)
+        self.phasecalparam = self.phasecalparam.append(phasecalparam)
 
         self.orederedtar.drop(
             self.orederedtar.query('SB_UID in @sb_uids').index.values,
@@ -488,7 +493,7 @@ class Database(object):
             ordtart_arr,
             columns=['targetId', 'SB_UID', 'indObs', 'name']
         ).set_index('targetId', drop=False)
-        self.orederedtar.append(orederedtar)
+        self.orederedtar = self.orederedtar.append(orederedtar)
 
         self.fieldsource.drop(
             self.fieldsource.query('SB_UID in @sb_uids').index.values,
@@ -500,7 +505,7 @@ class Database(object):
                      'qDEC', 'use', 'search_radius', 'rad_unit',
                      'ephemeris', 'pointings', 'isMosaic', 'arraySB']
         ).set_index('fieldRef', drop=False)
-        self.fieldsource.append(fieldsource)
+        self.fieldsource = self.fieldsource.append(fieldsource)
 
         self.target.drop(
             self.target.query('SB_UID in @sb_uids').index.values,
@@ -509,7 +514,7 @@ class Database(object):
             tart_arr,
             columns=['targetId', 'SB_UID', 'specRef', 'fieldRef',
                      'paramRef']).set_index('targetId', drop=False)
-        self.target.append(target)
+        self.target = self.target.append(target)
 
         self.spectralconf.drop(
             self.spectralconf.query('SB_UID in @sb_uids').index.values,
@@ -518,7 +523,7 @@ class Database(object):
             spct_arr,
             columns=['specRef', 'SB_UID', 'Name', 'BaseBands', 'SPWs']
         ).set_index('specRef', drop=False)
-        self.spectralconf.append(spectralconf)
+        self.spectralconf = self.spectralconf.append(spectralconf)
         self.spectralconf[['BaseBands', 'SPWs']] = self.spectralconf[
             ['BaseBands', 'SPWs']].astype(int)
 
@@ -531,7 +536,7 @@ class Database(object):
                      'CenterFreq', 'FreqSwitching', 'l02Freq',
                      'Weighting', 'useUDB']
         ).set_index('basebandRef', drop=False)
-        self.baseband.append(baseband)
+        self.baseband = self.baseband.append(baseband)
         tof = ['CenterFreq', 'l02Freq', 'Weighting']
         tob = ['FreqSwitching', 'useUDB']
         self.baseband[tof] = self.baseband[tof].astype(float)
@@ -548,7 +553,7 @@ class Database(object):
                      'EffectiveBandwidth', 'EffectiveChannels', 'lineRestFreq',
                      'lineName', 'Use'],
         ).set_index('basebandRef', drop=False)
-        self.spectralwindow.append(spectralwindow)
+        self.spectralwindow = self.spectralwindow.append(spectralwindow)
         tof = ['CenterFreq', 'EffectiveBandwidth', 'lineRestFreq']
         toi = ['AveragingFactor', 'EffectiveChannels']
         tob = ['Use']
@@ -581,6 +586,9 @@ class Database(object):
 
         # noinspection PyUnusedLocal
         status = self.status
+        self.df1 = self.df1.query(
+            '(CYCLE in ["2015.1", "2015.A"]) or '
+            '(CYCLE in ["2013.1", "2013.A"] and DC_LETTER_GRADE == "A")').copy()
         self.projects = pd.merge(
             self.df1.query('PRJ_STATUS not in @status'), self.executive,
             on='OBSPROJECT_UID'
