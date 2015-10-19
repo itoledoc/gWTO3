@@ -69,8 +69,8 @@ def observable(ra1, dec1, alma, isephem, min_ar, max_ar, array, sbuid):
                 conf[i] = 'C36-' + str(i + 1)
                 twelve_good += 1
 
-    if isephem:
-        return pd.Series([sbuid, 0., 23.99999, 24., 'ephem', conf[0], conf[1],
+    if isephem == 0:
+        return pd.Series([sbuid, None, None, None, 'ephem', conf[0], conf[1],
                           conf[2], conf[3], conf[4], conf[5], conf[6], conf[7],
                           twelve_good],
                          index=['SB_UID', 'rise', 'set', 'up', 'note', 'C36_1',

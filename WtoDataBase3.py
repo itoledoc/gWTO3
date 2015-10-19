@@ -6,7 +6,6 @@ import wto3_tools as wtool
 
 from WtoGetCycle3 import get_all_apdm, get_apdm
 from collections import namedtuple
-from subprocess import call
 from WtoXmlParsers3 import *
 from WtoConverter3 import *
 
@@ -61,39 +60,23 @@ class Database(object):
     Setting *forcenew* to True will force the cleaning of the cache dir, and
     all information will be processed again.
 
-    :param path: Path for data cache.
-    :type path: str, default '$HOME/.wto'
-    :param forcenew: Force cache cleaning and reload from archive.
-    :type forcenew: boolean, default False
+
     """
 
-    def __init__(self, path='/.wto3/', forcenew=True, verbose=True,
-                 refresh_apdm=True):
+    def __init__(self, refresh_apdm=True):
         """
         Initialize the WTO3 database
 
         """
 
         self.refresh_apdm = refresh_apdm
-        self.new = forcenew
         # Default Paths and Preferences
-        if path[-1] != '/':
-            path += '/'
-        self.path = os.environ['HOME'] + path
         self.wto_path = os.environ['WTO']
         self.data_path = os.environ['APDM_C3']
-        self.status = ["Canceled", "Completed", "Approved", "Phase1Submitted",
+        self.status = ["Canceled", "Approved", "Phase1Submitted",
                        "Rejected"]
-        self.verbose = verbose
         self.obsproject = pd.DataFrame()
         self.ares = ARes.ArrayRes(self.wto_path + 'conf/')
-
-        # self.grades = pd.read_table(
-        #     self.wto_path + 'conf/DC_final modified gradeC.csv', sep=',')
-        # self.sb_sg_p1 = pd.read_pickle(self.wto_path + 'conf/sb_sg_p1.pandas')
-
-        # Global SQL search expressions
-        # Search Project's PT information and match with PT Status
 
         self.sql1 = str(
             "SELECT obs1.PRJ_ARCHIVE_UID as OBSPROJECT_UID, obs1.PI, "
@@ -113,10 +96,6 @@ class Database(object):
         conx_string = os.environ['CON_STR']
         self.connection = cx_Oracle.connect(conx_string)
         self.cursor = self.connection.cursor()
-
-        # Create main dataframes
-        call(['rm', '-rf', self.path])
-        os.mkdir(self.path)
 
         self.sql_sbstates = str(
             "SELECT DOMAIN_ENTITY_STATE as SB_STATE,"
@@ -169,7 +148,9 @@ class Database(object):
         self.c6 = np.sqrt(self.ares.data[5][1] * self.ares.data[5][2])
         self.c7 = np.sqrt(self.ares.data[6][1] * self.ares.data[6][2])
         self.c8 = np.sqrt(self.ares.data[7][1] * self.ares.data[7][2])
-
+        self.listconf = [
+            self.c1, self.c2, self.c3, self.c4, self.c5, self.c6, self.c7,
+            self.c8]
         self.start_apa()
 
     def start_apa(self, update_arch=False):
@@ -232,388 +213,23 @@ class Database(object):
         self.load_sciencegoals()
         self.load_sblocks_meta()
         self.load_schedblocks()
-        self.schedblocks_temp['assumedconf_ar_ot'] = (
-            self.schedblocks_temp.minAR_ot / 0.9) * \
-            self.schedblocks_temp.repfreq / 100.
+        self.add_imaging_param()
 
-        self.listconf = [
-            self.c1, self.c2, self.c3, self.c4, self.c5, self.c6, self.c7,
-            self.c8]
+    def add_imaging_param(self):
 
-        self.schedblocks_temp['OT_BestConf'] = self.schedblocks_temp.apply(
+        self._schedblocks_temp['assumedconf_ar_ot'] = (
+            self._schedblocks_temp.minAR_ot / 0.9) * \
+            self._schedblocks_temp.repfreq / 100.
+        self._schedblocks_temp['OT_BestConf'] = self._schedblocks_temp.apply(
             lambda x: self.ares.array[
                 wtool.find_array(x['assumedconf_ar_ot'], self.listconf)] if
             x['array'] == "TWELVE-M" else "N/A",
             axis=1)
-
-        ar = self.schedblocks_temp.apply(lambda x: self.get_ar_lim(x), axis=1)
+        ar = self._schedblocks_temp.apply(lambda x: self.get_ar_lim(x), axis=1)
+        # noinspection PyUnresolvedReferences
         self.schedblocks = pd.concat(
-            [self.schedblocks_temp, ar], axis=1).set_index(
+            [self._schedblocks_temp, ar], axis=1).set_index(
             'SB_UID', drop=False)
-
-    def update_apdm(self, obsproject_uid):
-
-        proj_xmlfile = get_apdm(self.cursor, self.data_path, obsproject_uid)
-        proj = [self.read_obsproject(
-            proj_xmlfile, self.data_path + 'obsproject/')]
-        projt_arr = np.array(proj, dtype=object)
-        obsproject = pd.DataFrame(
-            projt_arr,
-            columns=['CODE', 'OBSPROJECT_UID', 'OBSPROPOSAL_UID',
-                     'OBSREVIEW_UID', 'VERSION',
-                     'NOTE', 'IS_CALIBRATION', 'IS_DDT']
-        ).set_index('OBSPROJECT_UID', drop=False)
-
-        self.obsproject.update(obsproject)
-        self.update_from_archive()
-        self.update_sciencegoal(obsproject_uid)
-        self.update_sblock_meta(obsproject_uid)
-        self.update_schedblock(obsproject_uid)
-        self.schedblocks_temp['assumedconf_ar_ot'] = (
-            self.schedblocks_temp.minAR_ot / 0.9) * \
-            self.schedblocks_temp.repfreq / 100.
-
-        self.schedblocks_temp['OT_BestConf'] = self.schedblocks_temp.apply(
-            lambda x: self.ares.array[
-                wtool.find_array(x['assumedconf_ar_ot'], self.listconf)] if
-            x['array'] == "TWELVE-M" else "N/A",
-            axis=1)
-
-        ar = self.schedblocks_temp.apply(lambda x: self.get_ar_lim(x), axis=1)
-        self.schedblocks = pd.concat(
-            [self.schedblocks_temp, ar], axis=1).set_index(
-            'SB_UID', drop=False)
-
-    def update_sciencegoal(self, obsproject_uid):
-
-        obsproposal_uid = self.obsproject.ix[obsproject_uid, 'OBSPROPOSAL_UID']
-        prop_xmlfile = obsproposal_uid.replace('://', '___').replace('/', '_')
-        prop_xmlfile += '.xml'
-        code = self.obsproject.ix[obsproject_uid, 'CODE']
-        obspropparse = self.read_sciencegoal(
-            code, prop_xmlfile, obsproject_uid)
-        for sg in obspropparse.sciencegoals:
-            self.sciencegoals.ix[sg[0]] = np.array(sg, dtype=object)
-
-        # noinspection PyUnusedLocal
-        sg_ids = self.sciencegoals.query(
-            'OBSPROJECT_UID in @obsproject_uid').SG_ID.unique()
-
-        for tar in obspropparse.sg_targets:
-            self.sg_targets.ix[tar[0]] = np.array(tar, dtype=object)
-
-        self.sg_spw.drop(self.sg_spw.query('SG_ID in @sg_ids').index.values,
-                         inplace=True, errors='ignore')
-        spw = pd.DataFrame(
-            np.array(obspropparse.sg_specwindows, dtype=object),
-            columns=['SG_ID', 'SPW_ID', 'transitionName', 'centerFrequency',
-                     'bandwidth', 'spectralRes', 'isRepSPW', 'isSkyFreq',
-                     'group_index']
-        )
-        self.sg_spw = self.sg_spw.append(spw, ignore_index=True)
-
-        if len(obspropparse.sg_specscan) > 0:
-            self.sg_specscan.drop(
-                self.sg_specscan.query('SG_ID in @sg_ids').index.values,
-                inplace=True, errors='ignore')
-            specscan = pd.DataFrame(
-                np.array(obspropparse.sg_specscan, dtype=object),
-                columns=['SG_ID', 'SSCAN_ID', 'startFrequency', 'endFrequency',
-                         'bandwidth', 'spectralRes', 'isSkyFreq']
-            )
-            self.sg_specscan =  self.sg_specscan.append(
-                specscan, ignore_index=True)
-
-        if len(obspropparse.visits) > 0:
-            self.visits.drop(
-                self.visits.query('SG_ID in @sg_ids').index.values,
-                inplace=True, errors='ignore')
-            visit = pd.DataFrame(
-                np.array(obspropparse.visits, dtype=object),
-                columns=[
-                    'SG_ID', 'sgName', 'OBSPROJECT_UID', 'startTime', 'margin',
-                    'margin_unit', 'note', 'avoidConstraint', 'priority',
-                    'visit_id', 'prev_visit_id', 'requiredDelay',
-                    'requiredDelay_unit', 'fixedStart']
-            )
-            self.visits = self.visits.append(visit, ignore_index=True)
-
-        if len(obspropparse.temp_param) > 0:
-            self.temp_param.drop(
-                self.temp_param.query('SG_ID in @sg_ids').index.values,
-                inplace=True, errors='ignore')
-            temppar = pd.DataFrame(
-                np.array(obspropparse.temp_param, dtype=object),
-                columns=[
-                    'SG_ID', 'sgName', 'OBSPROJECT_UID', 'startTime',
-                    'endTime', 'margin', 'margin_unit', 'repeats', 'LSTmin',
-                    'LSTmax', 'note', 'avoidConstraint', 'priority',
-                    'fixedStart']
-            )
-            self.temp_param = self.temp_param.append(temppar, ignore_index=True)
-
-    def update_sblock_meta(self, obsproject_uid):
-        r = [0, None]
-        r[1] = self.obsproject.ix[obsproject_uid]
-        parse = self.read_sblock_meta('II', r)
-        sbt = []
-        sbt.extend(parse.sg_sb)
-        sbt_arr = np.array(sbt, dtype=object)
-        # print sbt_arr, sbt_arr.shape
-        sblocks = pd.DataFrame(
-            sbt_arr,
-            columns=['SB_UID', 'OBSPROJECT_UID', 'ous_name', 'OUS_ID',
-                     'GOUS_ID',
-                     'gous_name', 'MOUS_ID', 'mous_name',
-                     'array', 'execount']
-        ).set_index('SB_UID', drop=False)
-        sblocks['sg_name'] = sblocks.ous_name.str.replace(
-            "SG OUS \(", "")
-        sblocks['sg_name'] = sblocks.sg_name.str.slice(0, -1)
-        self.sblocks.update(sblocks)
-
-    def update_schedblock(self, obsproject_uid, sb_path='schedblock/'):
-        path = self.data_path + sb_path
-        rst = []
-        rft = []
-        tart = []
-        spwt = []
-        bbt = []
-        spct = []
-        scpart = []
-        acpart = []
-        bcpart = []
-        pcpart = []
-        ordtart = []
-        print "Updating SBs of %s." % obsproject_uid
-        sb_uids = []
-
-        for sg_sb in self.sblocks.query('OBSPROJECT_UID == @obsproject_uid'
-                                        ).iterrows():
-            sb_uids.append(sg_sb[1].SB_UID)
-            xmlf = sg_sb[1].SB_UID.replace('://', '___')
-            xmlf = xmlf.replace('/', '_') + '.xml'
-            sb1 = SchedBlock(
-                xmlf, sg_sb[1].SB_UID, sg_sb[1].OBSPROJECT_UID, sg_sb[1].OUS_ID,
-                sg_sb[1].sg_name, path)
-            rs, rf, tar, spc, bb, spw, scpar, acpar, bcpar, pcpar, ordtar = \
-                sb1.read_schedblocks()
-            rst.append(rs)
-            rft.extend(rf)
-            tart.extend(tar)
-            spct.extend(spc)
-            bbt.extend(bb)
-            spwt.extend(spw)
-            scpart.extend(scpar)
-            acpart.extend(acpar)
-            bcpart.extend(bcpar)
-            pcpart.extend(pcpar)
-            ordtart.extend(ordtar)
-
-        rst_arr = np.array(rst, dtype=object)
-        rft_arr = np.array(rft, dtype=object)
-        tart_arr = np.array(tart, dtype=object)
-        spct_arr = np.array(spct, dtype=object)
-        bbt_arr = np.array(bbt, dtype=object)
-        spwt_arr = np.array(spwt, dtype=object)
-        scpart_arr = np.array(scpart, dtype=object)
-        acpart_arr = np.array(acpart, dtype=object)
-        bcpart_arr = np.array(bcpart, dtype=object)
-        pcpart_arr = np.array(pcpart, dtype=object)
-        ordtart_arr = np.array(ordtart, dtype=object)
-
-        self.schedblocks_temp.drop(
-            self.schedblocks_temp.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        rst_df = pd.DataFrame(
-            rst_arr,
-            columns=['SB_UID', 'OBSPROJECT_UID', 'SG_ID', 'OUS_ID',
-                     'sbName', 'sbNote', 'sbStatusXml', 'repfreq', 'band',
-                     'array',
-                     'RA', 'DEC', 'minAR_ot', 'maxAR_ot', 'execount',
-                     'isPolarization', 'maxPWVC', 'array12mType',
-                     'estimatedTime', 'maximumTime'],
-        ).set_index('SB_UID', drop=False)
-        self.schedblocks_temp = self.schedblocks_temp.append(rst_df)
-        tof = ['repfreq', 'RA', 'DEC', 'minAR_ot', 'maxAR_ot', 'maxPWVC']
-        self.schedblocks_temp[tof] = self.schedblocks_temp[tof].astype(float)
-        self.schedblocks_temp[['execount']] = self.schedblocks_temp[
-            ['execount']].astype(int)
-
-        self.scienceparam.drop(
-            self.scienceparam.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        scienceparam = pd.DataFrame(
-            scpart_arr,
-            columns=['paramRef', 'SB_UID', 'parName', 'representative_bw',
-                     'sensitivy', 'sensUnit', 'intTime', 'subScanDur']
-        ).set_index('paramRef', drop=False)
-        self.scienceparam = self.scienceparam.append(scienceparam)
-
-        self.ampcalparam.drop(
-            self.ampcalparam.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        ampcalparam = pd.DataFrame(
-            acpart_arr,
-            columns=['paramRef', 'SB_UID', 'parName', 'intTime',
-                     'subScanDur']
-        ).set_index('paramRef', drop=False)
-        self.ampcalparam = self.ampcalparam.append(ampcalparam)
-
-        self.bbandcalparam.drop(
-            self.bbandcalparam.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        bbandcalparam = pd.DataFrame(
-            bcpart_arr,
-            columns=['paramRef', 'SB_UID', 'parName', 'intTime',
-                     'subScanDur']
-        ).set_index('paramRef', drop=False)
-        self.bbandcalparam = self.bbandcalparam.append(bbandcalparam)
-
-        self.phasecalparam.drop(
-            self.phasecalparam.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        phasecalparam = pd.DataFrame(
-            pcpart_arr,
-            columns=['paramRef', 'SB_UID', 'parName', 'intTime',
-                     'subScanDur']
-        ).set_index('paramRef', drop=False)
-        self.phasecalparam = self.phasecalparam.append(phasecalparam)
-
-        self.orederedtar.drop(
-            self.orederedtar.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        orederedtar = pd.DataFrame(
-            ordtart_arr,
-            columns=['targetId', 'SB_UID', 'indObs', 'name']
-        ).set_index('targetId', drop=False)
-        self.orederedtar = self.orederedtar.append(orederedtar)
-
-        self.fieldsource.drop(
-            self.fieldsource.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        fieldsource = pd.DataFrame(
-            rft_arr,
-            columns=['fieldRef', 'SB_UID', 'solarSystem', 'sourcename',
-                     'name', 'RA', 'DEC', 'isQuery', 'intendedUse', 'qRA',
-                     'qDEC', 'use', 'search_radius', 'rad_unit',
-                     'ephemeris', 'pointings', 'isMosaic', 'arraySB']
-        ).set_index('fieldRef', drop=False)
-        self.fieldsource = self.fieldsource.append(fieldsource)
-
-        self.target.drop(
-            self.target.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        target = pd.DataFrame(
-            tart_arr,
-            columns=['targetId', 'SB_UID', 'specRef', 'fieldRef',
-                     'paramRef']).set_index('targetId', drop=False)
-        self.target = self.target.append(target)
-
-        self.spectralconf.drop(
-            self.spectralconf.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        spectralconf = pd.DataFrame(
-            spct_arr,
-            columns=['specRef', 'SB_UID', 'Name', 'BaseBands', 'SPWs']
-        ).set_index('specRef', drop=False)
-        self.spectralconf = self.spectralconf.append(spectralconf)
-        self.spectralconf[['BaseBands', 'SPWs']] = self.spectralconf[
-            ['BaseBands', 'SPWs']].astype(int)
-
-        self.baseband.drop(
-            self.baseband.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        baseband = pd.DataFrame(
-            bbt_arr,
-            columns=['basebandRef', 'specRef', 'SB_UID', 'Name',
-                     'CenterFreq', 'FreqSwitching', 'l02Freq',
-                     'Weighting', 'useUDB']
-        ).set_index('basebandRef', drop=False)
-        self.baseband = self.baseband.append(baseband)
-        tof = ['CenterFreq', 'l02Freq', 'Weighting']
-        tob = ['FreqSwitching', 'useUDB']
-        self.baseband[tof] = self.baseband[tof].astype(float)
-        self.baseband[tob] = self.baseband[tob].astype(bool)
-
-        self.spectralwindow.drop(
-            self.spectralwindow.query('SB_UID in @sb_uids').index.values,
-            inplace=True, errors='ignore')
-        spectralwindow = pd.DataFrame(
-            spwt_arr,
-            columns=['basebandRef', 'SB_UID', 'Name',
-                     'SideBand', 'WindowsFunction',
-                     'CenterFreq', 'AveragingFactor',
-                     'EffectiveBandwidth', 'EffectiveChannels', 'lineRestFreq',
-                     'lineName', 'Use'],
-        ).set_index('basebandRef', drop=False)
-        self.spectralwindow = self.spectralwindow.append(spectralwindow)
-        tof = ['CenterFreq', 'EffectiveBandwidth', 'lineRestFreq']
-        toi = ['AveragingFactor', 'EffectiveChannels']
-        tob = ['Use']
-        self.spectralwindow[tof] = self.spectralwindow[tof].astype(float)
-        self.spectralwindow[toi] = self.spectralwindow[toi].astype(int)
-        self.spectralwindow[tob] = self.spectralwindow[tob].astype(bool)
-
-    def update_from_archive(self):
-
-        self.cursor.execute(self.sql1)
-        self.df1 = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description])
-
-        self.cursor.execute(self.sql_executive)
-        self.executive = pd.DataFrame(
-            self.cursor.fetchall(), columns=['OBSPROJECT_UID', 'EXEC'])
-
-        # noinspection PyUnusedLocal
-        status = self.status
-        self.df1 = self.df1.query(
-            '(CYCLE in ["2015.1", "2015.A"]) or '
-            '(CYCLE in ["2013.1", "2013.A"] and DC_LETTER_GRADE == "A")').copy()
-        self.projects = pd.merge(
-            self.df1.query('PRJ_STATUS not in @status'), self.executive,
-            on='OBSPROJECT_UID'
-        ).set_index('CODE', drop=False)
-
-        timestamp = pd.Series(
-            np.zeros(len(self.projects), dtype=object),
-            index=self.projects.index)
-        self.projects['timestamp'] = timestamp
-        self.projects['xmlfile'] = self.projects.apply(
-            lambda r: r['OBSPROJECT_UID'].replace('://', '___').replace(
-                '/', '_') + '.xml', axis=1
-        )
-        self.projects['phase'] = self.projects.apply(
-            lambda r: 'I' if r['PRJ_STATUS'] in phase_i_status else 'II',
-            axis=1
-        )
-
-    def add_sbinfo(self):
-
-        scitar = pd.merge(
-            self.orederedtar.query('name != "Calibrators"'),
-            self.target, on=['SB_UID', 'targetId'])
-        scitar2 = pd.merge(
-            scitar, self.scienceparam, on=['SB_UID', 'paramRef'])
-        self.scitar2 = pd.merge(
-            scitar2, self.fieldsource[
-                ['SB_UID', 'fieldRef', 'name', 'RA', 'DEC', 'isQuery', 'use',
-                 'solarSystem', 'isMosaic', 'pointings', 'ephemeris']
-            ], on=['SB_UID', 'fieldRef'],
-            suffixes=['_target', '_so'])
-
-        sb_target_num = self.scitar2.groupby('SB_UID').agg(
-            {'fieldRef': pd.Series.nunique, 'pointings': pd.Series.max,
-             'targetId': pd.Series.nunique, 'paramRef': pd.Series.nunique,
-             'specRef': pd.Series.nunique}).reset_index()
-
-        self.multi_point_su = sb_target_num.query(
-            'pointings > 1').SB_UID.unique()
-        self.multi_field_su = sb_target_num.query(
-            'fieldRef > 1').SB_UID.unique()
-        self.ephem_su = self.scitar2.query(
-            'solarSystem != "Unspecified"').SB_UID.unique()
 
     def load_obsprojects(self, path):
 
@@ -870,7 +486,7 @@ class Database(object):
         pcpart_arr = np.array(pcpart, dtype=object)
         ordtart_arr = np.array(ordtart, dtype=object)
 
-        self.schedblocks_temp = pd.DataFrame(
+        self._schedblocks_temp = pd.DataFrame(
             rst_arr,
             columns=['SB_UID', 'OBSPROJECT_UID', 'SG_ID', 'OUS_ID',
                      'sbName', 'sbNote', 'sbStatusXml', 'repfreq', 'band',
@@ -881,8 +497,8 @@ class Database(object):
         ).set_index('SB_UID', drop=False)
 
         tof = ['repfreq', 'RA', 'DEC', 'minAR_ot', 'maxAR_ot', 'maxPWVC']
-        self.schedblocks_temp[tof] = self.schedblocks_temp[tof].astype(float)
-        self.schedblocks_temp[['execount']] = self.schedblocks_temp[
+        self._schedblocks_temp[tof] = self._schedblocks_temp[tof].astype(float)
+        self._schedblocks_temp[['execount']] = self._schedblocks_temp[
             ['execount']].astype(int)
 
         self.scienceparam = pd.DataFrame(
@@ -909,7 +525,7 @@ class Database(object):
                      'subScanDur']
         ).set_index('paramRef', drop=False)
 
-        self.orederedtar = pd.DataFrame(
+        self.orderedtar = pd.DataFrame(
             ordtart_arr,
             columns=['targetId', 'SB_UID', 'indObs', 'name']
         ).set_index('targetId', drop=False)
@@ -965,6 +581,345 @@ class Database(object):
         self.spectralwindow[toi] = self.spectralwindow[toi].astype(int)
         self.spectralwindow[tob] = self.spectralwindow[tob].astype(bool)
 
+    def update_apdm(self, obsproject_uid):
+
+        proj_xmlfile = get_apdm(self.cursor, self.data_path, obsproject_uid)
+        proj = [self.read_obsproject(
+            proj_xmlfile, self.data_path + 'obsproject/')]
+        projt_arr = np.array(proj, dtype=object)
+        obsproject = pd.DataFrame(
+            projt_arr,
+            columns=['CODE', 'OBSPROJECT_UID', 'OBSPROPOSAL_UID',
+                     'OBSREVIEW_UID', 'VERSION',
+                     'NOTE', 'IS_CALIBRATION', 'IS_DDT']
+        ).set_index('OBSPROJECT_UID', drop=False)
+
+        self.obsproject.update(obsproject)
+        self.update_from_archive()
+        self.update_sciencegoal(obsproject_uid)
+        self.update_sblock_meta(obsproject_uid)
+        self.update_schedblock(obsproject_uid)
+        self.add_imaging_param()
+
+    def update_sciencegoal(self, obsproject_uid):
+
+        obsproposal_uid = self.obsproject.ix[obsproject_uid, 'OBSPROPOSAL_UID']
+        prop_xmlfile = obsproposal_uid.replace('://', '___').replace('/', '_')
+        prop_xmlfile += '.xml'
+        code = self.obsproject.ix[obsproject_uid, 'CODE']
+        obspropparse = self.read_sciencegoal(
+            code, prop_xmlfile, obsproject_uid)
+        for sg in obspropparse.sciencegoals:
+            self.sciencegoals.ix[sg[0]] = np.array(sg, dtype=object)
+
+        # noinspection PyUnusedLocal
+        sg_ids = self.sciencegoals.query(
+            'OBSPROJECT_UID in @obsproject_uid').SG_ID.unique()
+
+        for tar in obspropparse.sg_targets:
+            self.sg_targets.ix[tar[0]] = np.array(tar, dtype=object)
+
+        self.sg_spw.drop(self.sg_spw.query('SG_ID in @sg_ids').index.values,
+                         inplace=True, errors='ignore')
+        spw = pd.DataFrame(
+            np.array(obspropparse.sg_specwindows, dtype=object),
+            columns=['SG_ID', 'SPW_ID', 'transitionName', 'centerFrequency',
+                     'bandwidth', 'spectralRes', 'isRepSPW', 'isSkyFreq',
+                     'group_index']
+        )
+        self.sg_spw = self.sg_spw.append(spw, ignore_index=True)
+
+        if len(obspropparse.sg_specscan) > 0:
+            self.sg_specscan.drop(
+                self.sg_specscan.query('SG_ID in @sg_ids').index.values,
+                inplace=True, errors='ignore')
+            specscan = pd.DataFrame(
+                np.array(obspropparse.sg_specscan, dtype=object),
+                columns=['SG_ID', 'SSCAN_ID', 'startFrequency', 'endFrequency',
+                         'bandwidth', 'spectralRes', 'isSkyFreq']
+            )
+            self.sg_specscan = self.sg_specscan.append(
+                specscan, ignore_index=True)
+
+        if len(obspropparse.visits) > 0:
+            self.visits.drop(
+                self.visits.query('SG_ID in @sg_ids').index.values,
+                inplace=True, errors='ignore')
+            visit = pd.DataFrame(
+                np.array(obspropparse.visits, dtype=object),
+                columns=[
+                    'SG_ID', 'sgName', 'OBSPROJECT_UID', 'startTime', 'margin',
+                    'margin_unit', 'note', 'avoidConstraint', 'priority',
+                    'visit_id', 'prev_visit_id', 'requiredDelay',
+                    'requiredDelay_unit', 'fixedStart']
+            )
+            self.visits = self.visits.append(visit, ignore_index=True)
+
+        if len(obspropparse.temp_param) > 0:
+            self.temp_param.drop(
+                self.temp_param.query('SG_ID in @sg_ids').index.values,
+                inplace=True, errors='ignore')
+            temppar = pd.DataFrame(
+                np.array(obspropparse.temp_param, dtype=object),
+                columns=[
+                    'SG_ID', 'sgName', 'OBSPROJECT_UID', 'startTime',
+                    'endTime', 'margin', 'margin_unit', 'repeats', 'LSTmin',
+                    'LSTmax', 'note', 'avoidConstraint', 'priority',
+                    'fixedStart']
+            )
+            self.temp_param = self.temp_param.append(temppar, ignore_index=True)
+
+    def update_sblock_meta(self, obsproject_uid):
+        r = [0, None]
+        r[1] = self.obsproject.ix[obsproject_uid]
+        parse = self.read_sblock_meta('II', r)
+        sbt = []
+        sbt.extend(parse.sg_sb)
+        sbt_arr = np.array(sbt, dtype=object)
+        # print sbt_arr, sbt_arr.shape
+        sblocks = pd.DataFrame(
+            sbt_arr,
+            columns=['SB_UID', 'OBSPROJECT_UID', 'ous_name', 'OUS_ID',
+                     'GOUS_ID',
+                     'gous_name', 'MOUS_ID', 'mous_name',
+                     'array', 'execount']
+        ).set_index('SB_UID', drop=False)
+        sblocks['sg_name'] = sblocks.ous_name.str.replace(
+            "SG OUS \(", "")
+        sblocks['sg_name'] = sblocks.sg_name.str.slice(0, -1)
+        self.sblocks.update(sblocks)
+
+    def update_schedblock(self, obsproject_uid, sb_path='schedblock/'):
+        path = self.data_path + sb_path
+        rst = []
+        rft = []
+        tart = []
+        spwt = []
+        bbt = []
+        spct = []
+        scpart = []
+        acpart = []
+        bcpart = []
+        pcpart = []
+        ordtart = []
+        print "Updating SBs of %s." % obsproject_uid
+        sb_uids = []
+
+        for sg_sb in self.sblocks.query('OBSPROJECT_UID == @obsproject_uid'
+                                        ).iterrows():
+            sb_uids.append(sg_sb[1].SB_UID)
+            xmlf = sg_sb[1].SB_UID.replace('://', '___')
+            xmlf = xmlf.replace('/', '_') + '.xml'
+            sb1 = SchedBlock(
+                xmlf, sg_sb[1].SB_UID, sg_sb[1].OBSPROJECT_UID, sg_sb[1].OUS_ID,
+                sg_sb[1].sg_name, path)
+            rs, rf, tar, spc, bb, spw, scpar, acpar, bcpar, pcpar, ordtar = \
+                sb1.read_schedblocks()
+            rst.append(rs)
+            rft.extend(rf)
+            tart.extend(tar)
+            spct.extend(spc)
+            bbt.extend(bb)
+            spwt.extend(spw)
+            scpart.extend(scpar)
+            acpart.extend(acpar)
+            bcpart.extend(bcpar)
+            pcpart.extend(pcpar)
+            ordtart.extend(ordtar)
+
+        rst_arr = np.array(rst, dtype=object)
+        rft_arr = np.array(rft, dtype=object)
+        tart_arr = np.array(tart, dtype=object)
+        spct_arr = np.array(spct, dtype=object)
+        bbt_arr = np.array(bbt, dtype=object)
+        spwt_arr = np.array(spwt, dtype=object)
+        scpart_arr = np.array(scpart, dtype=object)
+        acpart_arr = np.array(acpart, dtype=object)
+        bcpart_arr = np.array(bcpart, dtype=object)
+        pcpart_arr = np.array(pcpart, dtype=object)
+        ordtart_arr = np.array(ordtart, dtype=object)
+
+        self._schedblocks_temp.drop(
+            self._schedblocks_temp.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        rst_df = pd.DataFrame(
+            rst_arr,
+            columns=['SB_UID', 'OBSPROJECT_UID', 'SG_ID', 'OUS_ID',
+                     'sbName', 'sbNote', 'sbStatusXml', 'repfreq', 'band',
+                     'array',
+                     'RA', 'DEC', 'minAR_ot', 'maxAR_ot', 'execount',
+                     'isPolarization', 'maxPWVC', 'array12mType',
+                     'estimatedTime', 'maximumTime'],
+        ).set_index('SB_UID', drop=False)
+        self._schedblocks_temp = self._schedblocks_temp.append(rst_df)
+        tof = ['repfreq', 'RA', 'DEC', 'minAR_ot', 'maxAR_ot', 'maxPWVC']
+        self._schedblocks_temp[tof] = self._schedblocks_temp[tof].astype(float)
+        self._schedblocks_temp[['execount']] = self._schedblocks_temp[
+            ['execount']].astype(int)
+
+        self.scienceparam.drop(
+            self.scienceparam.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        scienceparam = pd.DataFrame(
+            scpart_arr,
+            columns=['paramRef', 'SB_UID', 'parName', 'representative_bw',
+                     'sensitivy', 'sensUnit', 'intTime', 'subScanDur']
+        ).set_index('paramRef', drop=False)
+        self.scienceparam = self.scienceparam.append(scienceparam)
+
+        self.ampcalparam.drop(
+            self.ampcalparam.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        ampcalparam = pd.DataFrame(
+            acpart_arr,
+            columns=['paramRef', 'SB_UID', 'parName', 'intTime',
+                     'subScanDur']
+        ).set_index('paramRef', drop=False)
+        self.ampcalparam = self.ampcalparam.append(ampcalparam)
+
+        self.bbandcalparam.drop(
+            self.bbandcalparam.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        bbandcalparam = pd.DataFrame(
+            bcpart_arr,
+            columns=['paramRef', 'SB_UID', 'parName', 'intTime',
+                     'subScanDur']
+        ).set_index('paramRef', drop=False)
+        self.bbandcalparam = self.bbandcalparam.append(bbandcalparam)
+
+        self.phasecalparam.drop(
+            self.phasecalparam.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        phasecalparam = pd.DataFrame(
+            pcpart_arr,
+            columns=['paramRef', 'SB_UID', 'parName', 'intTime',
+                     'subScanDur']
+        ).set_index('paramRef', drop=False)
+        self.phasecalparam = self.phasecalparam.append(phasecalparam)
+
+        self.orderedtar.drop(
+            self.orderedtar.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        orderedtar = pd.DataFrame(
+            ordtart_arr,
+            columns=['targetId', 'SB_UID', 'indObs', 'name']
+        ).set_index('targetId', drop=False)
+        self.orderedtar = self.orderedtar.append(orderedtar)
+
+        self.fieldsource.drop(
+            self.fieldsource.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        fieldsource = pd.DataFrame(
+            rft_arr,
+            columns=['fieldRef', 'SB_UID', 'solarSystem', 'sourcename',
+                     'name', 'RA', 'DEC', 'isQuery', 'intendedUse', 'qRA',
+                     'qDEC', 'use', 'search_radius', 'rad_unit',
+                     'ephemeris', 'pointings', 'isMosaic', 'arraySB']
+        ).set_index('fieldRef', drop=False)
+        self.fieldsource = self.fieldsource.append(fieldsource)
+
+        self.target.drop(
+            self.target.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        target = pd.DataFrame(
+            tart_arr,
+            columns=['targetId', 'SB_UID', 'specRef', 'fieldRef',
+                     'paramRef']).set_index('targetId', drop=False)
+        self.target = self.target.append(target)
+
+        self.spectralconf.drop(
+            self.spectralconf.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        spectralconf = pd.DataFrame(
+            spct_arr,
+            columns=['specRef', 'SB_UID', 'Name', 'BaseBands', 'SPWs']
+        ).set_index('specRef', drop=False)
+        self.spectralconf = self.spectralconf.append(spectralconf)
+        self.spectralconf[['BaseBands', 'SPWs']] = self.spectralconf[
+            ['BaseBands', 'SPWs']].astype(int)
+
+        self.baseband.drop(
+            self.baseband.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        baseband = pd.DataFrame(
+            bbt_arr,
+            columns=['basebandRef', 'specRef', 'SB_UID', 'Name',
+                     'CenterFreq', 'FreqSwitching', 'l02Freq',
+                     'Weighting', 'useUDB']
+        ).set_index('basebandRef', drop=False)
+        self.baseband = self.baseband.append(baseband)
+        tof = ['CenterFreq', 'l02Freq', 'Weighting']
+        tob = ['FreqSwitching', 'useUDB']
+        self.baseband[tof] = self.baseband[tof].astype(float)
+        self.baseband[tob] = self.baseband[tob].astype(bool)
+
+        self.spectralwindow.drop(
+            self.spectralwindow.query('SB_UID in @sb_uids').index.values,
+            inplace=True, errors='ignore')
+        spectralwindow = pd.DataFrame(
+            spwt_arr,
+            columns=['basebandRef', 'SB_UID', 'Name',
+                     'SideBand', 'WindowsFunction',
+                     'CenterFreq', 'AveragingFactor',
+                     'EffectiveBandwidth', 'EffectiveChannels', 'lineRestFreq',
+                     'lineName', 'Use'],
+        ).set_index('basebandRef', drop=False)
+        self.spectralwindow = self.spectralwindow.append(spectralwindow)
+        tof = ['CenterFreq', 'EffectiveBandwidth', 'lineRestFreq']
+        toi = ['AveragingFactor', 'EffectiveChannels']
+        tob = ['Use']
+        self.spectralwindow[tof] = self.spectralwindow[tof].astype(float)
+        self.spectralwindow[toi] = self.spectralwindow[toi].astype(int)
+        self.spectralwindow[tob] = self.spectralwindow[tob].astype(bool)
+
+    def update_from_archive(self):
+
+        self.cursor.execute(self.sql1)
+        self.df1 = pd.DataFrame(
+            self.cursor.fetchall(),
+            columns=[rec[0] for rec in self.cursor.description])
+
+        self.cursor.execute(self.sql_executive)
+        self.executive = pd.DataFrame(
+            self.cursor.fetchall(), columns=['OBSPROJECT_UID', 'EXEC'])
+
+        # noinspection PyUnusedLocal
+        status = self.status
+        self.df1 = self.df1.query(
+            '(CYCLE in ["2015.1", "2015.A"]) or '
+            '(CYCLE in ["2013.1", "2013.A"] and DC_LETTER_GRADE == "A")').copy()
+        self.projects = pd.merge(
+            self.df1.query('PRJ_STATUS not in @status'), self.executive,
+            on='OBSPROJECT_UID'
+        ).set_index('CODE', drop=False)
+
+        timestamp = pd.Series(
+            np.zeros(len(self.projects), dtype=object),
+            index=self.projects.index)
+        self.projects['timestamp'] = timestamp
+        self.projects['xmlfile'] = self.projects.apply(
+            lambda r: r['OBSPROJECT_UID'].replace('://', '___').replace(
+                '/', '_') + '.xml', axis=1
+        )
+        self.projects['phase'] = self.projects.apply(
+            lambda r: 'I' if r['PRJ_STATUS'] in phase_i_status else 'II',
+            axis=1
+        )
+
+    def update_status(self):
+
+        self.cursor.execute(self.sqlqa0)
+        self.aqua_execblock = pd.DataFrame(
+            self.cursor.fetchall(),
+            columns=[rec[0] for rec in self.cursor.description]
+        ).set_index('SB_UID', drop=False)
+
+        self.cursor.execute(self.sql_sbstates)
+        self.sb_status = pd.DataFrame(
+            self.cursor.fetchall(),
+            columns=[rec[0] for rec in self.cursor.description]
+        ).set_index('SB_UID', drop=False)
+
     # noinspection PyUnusedLocal
     def get_ar_lim(self, sbrow):
 
@@ -997,13 +952,13 @@ class Database(object):
                 'OBSPROJECT_UID == @ouid and (sg_name == @sgn or '
                 ' OUS_ID == @ousid)')
 
-        sbs = self.schedblocks_temp.query(
+        sbs = self._schedblocks_temp.query(
             'OBSPROJECT_UID == @ouid and SG_ID == @sgn and array == "TWELVE-M"')
         isextended = True
         sb_bl_num = len(sbs)
-        sb_7m_num = len(self.schedblocks_temp.query(
+        sb_7m_num = len(self._schedblocks_temp.query(
             'OBSPROJECT_UID == @ouid and SG_ID == @sgn and array == "SEVEN-M"'))
-        sb_tp_num = len(self.schedblocks_temp.query(
+        sb_tp_num = len(self._schedblocks_temp.query(
             'OBSPROJECT_UID == @ouid and SG_ID == @sgn and '
             'array == "TP-Array"'))
 
