@@ -63,7 +63,7 @@ class Database(object):
 
     """
 
-    def __init__(self, refresh_apdm=True):
+    def __init__(self, refresh_apdm=True, path=None):
         """
         Initialize the WTO3 database
         :type refresh_apdm: bool
@@ -73,7 +73,10 @@ class Database(object):
         self._refresh_apdm = refresh_apdm
         # Default Paths and Preferences
         self._wto_path = os.environ['WTO']
-        self._data_path = os.environ['APDM_C3']
+        if path:
+            self._data_path = path
+        else:
+            self._data_path = os.environ['APDM_C3']
         self.status = ["Canceled", "Approved", "Phase1Submitted",
                        "Rejected"]
         self.obsproject = pd.DataFrame()
