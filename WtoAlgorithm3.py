@@ -3,14 +3,24 @@ import pandas as pd
 import ephem
 import wto3_tools as wtool
 
-from astropy import units as u
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-from astropy.time import Time
+# from astropy import units as u
+# from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+# from astropy.time import Time
 from WtoDataBase3 import Database
 
 # noinspection PyUnresolvedReferences
-ALMA = EarthLocation(
-    lat=-23.0262015*u.deg, lon=-67.7551257*u.deg, height=5060*u.m)
+# ALMA = EarthLocation(
+#     lat=-23.0262015*u.deg, lon=-67.7551257*u.deg, height=5060*u.m)
+
+SSO = ['Moon', 'Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
+       'Uranus', 'Neptune', 'Pluto']
+MOON = ['Ganymede', 'Europa', 'Callisto', 'Io', 'Titan']
+
+ALMA1 = ephem.Observer()
+ALMA1.lat = '-23.0262015'
+ALMA1.long = '-67.7551257'
+ALMA1.elev = 5060
+ALMA1.horizon = ephem.degrees(str('20'))
 
 
 # noinspection PyAttributeOutsideInit
@@ -29,31 +39,59 @@ class WtoAlgorithm3(Database):
     def sched_db(self):
         pass
 
-    def add_sbinfo(self):
+    def ephem_coords(self):
 
-        scitar = pd.merge(
-            self.orderedtar.query('name != "Calibrators"'),
-            self.target, on=['SB_UID', 'targetId'])
-        scitar2 = pd.merge(
-            scitar, self.scienceparam, on=['SB_UID', 'paramRef'])
+        self.create_extrainfo()
 
-        self.scitar2 = pd.merge(
-            scitar2, self.fieldsource[
-                ['SB_UID', 'fieldRef', 'name', 'RA', 'DEC', 'isQuery', 'use',
-                 'solarSystem', 'isMosaic', 'pointings', 'ephemeris']
-            ], on=['SB_UID', 'fieldRef'],
-            suffixes=['_target', '_so'])
+        ephem_sb = pd.merge(
+            self.schedblocks.query('RA == 0 and DEC == 0'),
+            self.target_tables.query('isQuery == False'),
+            on='SB_UID',
+            how='left',
+            suffixes=["_sb", "_fs"]).set_index('SB_UID')
 
-        sb_target_num = self.scitar2.groupby('SB_UID').agg(
-            {'fieldRef': pd.Series.nunique, 'pointings': pd.Series.max,
-             'targetId': pd.Series.nunique, 'paramRef': pd.Series.nunique,
-             'specRef': pd.Series.nunique}).reset_index()
-        self.multi_point_su = sb_target_num.query(
-            'pointings > 1').SB_UID.unique()
-        self.multi_field_su = sb_target_num.query(
-            'fieldRef > 1').SB_UID.unique()
-        self.ephem_su = self.scitar2.query(
-            'solarSystem != "Unspecified"').SB_UID.unique()
+        results = ephem_sb.apply(
+            lambda x: self.calc_ephem_coords(x['solarSystem'], x['ephemeris']),
+            axis=1)
+
+        for r in results.iteritems():
+            print r
+            self.schedblocks.ix[r[0], 'RA'] = r[1][0]
+            self.schedblocks.ix[r[0], 'DEC'] = r[1][1]
+
+    @staticmethod
+    def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1):
+
+        if ekind in SSO:
+            obj = eval('ephem.' + ekind + '()')
+            obj.compute(alma)
+            ra = np.rad2deg(obj.ra)
+            dec = np.rad2deg(obj.dec)
+            ephe = True
+
+        elif ekind in MOON:
+            obj = eval('ephem.' + ekind + '()')
+            obj.compute(alma)
+            ra = np.rad2deg(obj.ra)
+            dec = np.rad2deg(obj.dec)
+            ephe = True
+
+        elif ekind == 'Ephemeris':
+            try:
+                ra, dec, ephe = wtool.read_ephemeris(ephemstring, ALMA1.date)
+            except TypeError:
+                # print(ephemeris, sourcename)
+                ephe = False
+            if not ephe:
+                # print("Source %s doesn't have ephemeris for current's date" %
+                #        ekind)
+                return 0., 0., False
+
+        else:
+            # print("What??")
+            return 0., 0., False
+
+        return ra, dec, ephe
 
     def observable_param(self):
 

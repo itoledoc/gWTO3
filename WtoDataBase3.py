@@ -66,19 +66,20 @@ class Database(object):
     def __init__(self, refresh_apdm=True):
         """
         Initialize the WTO3 database
+        :type refresh_apdm: bool
 
         """
 
-        self.refresh_apdm = refresh_apdm
+        self._refresh_apdm = refresh_apdm
         # Default Paths and Preferences
-        self.wto_path = os.environ['WTO']
-        self.data_path = os.environ['APDM_C3']
+        self._wto_path = os.environ['WTO']
+        self._data_path = os.environ['APDM_C3']
         self.status = ["Canceled", "Approved", "Phase1Submitted",
                        "Rejected"]
         self.obsproject = pd.DataFrame()
-        self.ares = ARes.ArrayRes(self.wto_path + 'conf/')
+        self._ares = ARes.ArrayRes(self._wto_path + 'conf/')
 
-        self.sql1 = str(
+        self._sql1 = str(
             "SELECT obs1.PRJ_ARCHIVE_UID as OBSPROJECT_UID, obs1.PI, "
             "obs1.PRJ_NAME,"
             "CODE,PRJ_SCIENTIFIC_RANK,PRJ_VERSION,"
@@ -94,44 +95,44 @@ class Database(object):
             "obs4.DC_LETTER_GRADE IN ('A', 'B', 'C')")
 
         conx_string = os.environ['CON_STR']
-        self.connection = cx_Oracle.connect(conx_string)
-        self.cursor = self.connection.cursor()
+        self._connection = cx_Oracle.connect(conx_string)
+        self._cursor = self._connection.cursor()
 
-        self.sql_sbstates = str(
+        self._sql_sbstates = str(
             "SELECT DOMAIN_ENTITY_STATE as SB_STATE,"
             "DOMAIN_ENTITY_ID as SB_UID,OBS_PROJECT_ID as OBSPROJECT_UID "
             "FROM ALMA.SCHED_BLOCK_STATUS")
-        self.cursor.execute(self.sql_sbstates)
+        self._cursor.execute(self._sql_sbstates)
         self.sb_status = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description]
+            self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
 
         # self.qa0: QAO flags for observed SBs
         # Query QA0 flags from AQUA tables
-        self.sqlqa0 = str(
+        self._sqlqa0 = str(
             "SELECT SCHEDBLOCKUID as SB_UID, QA0STATUS, STARTTIME, ENDTIME,"
             "EXECBLOC"
             "KUID, EXECFRACTION "
             "FROM ALMA.AQUA_V_EXECBLOCK "
             "WHERE regexp_like (OBSPROJECTCODE, '^201[35]\..*\.[AST]')")
 
-        self.cursor.execute(self.sqlqa0)
+        self._cursor.execute(self._sqlqa0)
         self.aqua_execblock = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description]
+            self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
 
         # Query for Executives
-        self.sql_executive = str(
+        self._sql_executive = str(
             "SELECT PROJECTUID as OBSPROJECT_UID, ASSOCIATEDEXEC "
             "FROM ALMA.BMMV_OBSPROPOSAL "
             "WHERE regexp_like (CYCLE, '^201[35].[1A]')")
-        self.cursor.execute(self.sql_executive)
+        self._cursor.execute(self._sql_executive)
         self.executive = pd.DataFrame(
-            self.cursor.fetchall(), columns=['OBSPROJECT_UID', 'EXEC'])
+            self._cursor.fetchall(), columns=['OBSPROJECT_UID', 'EXEC'])
 
-        self.sql3 = str(
+        self._sql_obstatus_exec = str(
                 "SELECT obs1.ARCHIVE_UID as SB_UID,"
                 "obs1.PRJ_REF as OBSPROJECT_UID, obs1.SB_NAME, "
                 "obs1.STATUS as SB_STATE, obs1.EXECUTION_COUNT "
@@ -140,17 +141,17 @@ class Database(object):
                 "AND regexp_like (obs2.PRJ_CODE, '^201[35]\..*\.[AST]')"
             )
 
-        self.c1 = np.sqrt(self.ares.data[0][1] * self.ares.data[0][2])
-        self.c2 = np.sqrt(self.ares.data[1][1] * self.ares.data[1][2])
-        self.c3 = np.sqrt(self.ares.data[2][1] * self.ares.data[2][2])
-        self.c4 = np.sqrt(self.ares.data[3][1] * self.ares.data[3][2])
-        self.c5 = np.sqrt(self.ares.data[4][1] * self.ares.data[4][2])
-        self.c6 = np.sqrt(self.ares.data[5][1] * self.ares.data[5][2])
-        self.c7 = np.sqrt(self.ares.data[6][1] * self.ares.data[6][2])
-        self.c8 = np.sqrt(self.ares.data[7][1] * self.ares.data[7][2])
-        self.listconf = [
-            self.c1, self.c2, self.c3, self.c4, self.c5, self.c6, self.c7,
-            self.c8]
+        self._c1 = np.sqrt(self._ares.data[0][1] * self._ares.data[0][2])
+        self._c2 = np.sqrt(self._ares.data[1][1] * self._ares.data[1][2])
+        self._c3 = np.sqrt(self._ares.data[2][1] * self._ares.data[2][2])
+        self._c4 = np.sqrt(self._ares.data[3][1] * self._ares.data[3][2])
+        self._c5 = np.sqrt(self._ares.data[4][1] * self._ares.data[4][2])
+        self._c6 = np.sqrt(self._ares.data[5][1] * self._ares.data[5][2])
+        self._c7 = np.sqrt(self._ares.data[6][1] * self._ares.data[6][2])
+        self._c8 = np.sqrt(self._ares.data[7][1] * self._ares.data[7][2])
+        self._listconf = [
+            self._c1, self._c2, self._c3, self._c4, self._c5, self._c6, self._c7,
+            self._c8]
         self.start_apa()
 
     def start_apa(self, update_arch=False):
@@ -166,6 +167,8 @@ class Database(object):
         ALMA.OBS_PROJECT_STATUS, ALMA.BMMV_OBSPROJECT and
         ALMA.XML_OBSPROJECT_ENTITIES.
 
+        :param update_arch:
+        :rtype: bool
         :return: None
         """
 
@@ -176,10 +179,10 @@ class Database(object):
         status = self.status
 
         # Query for Projects, from BMMV.
-        self.cursor.execute(self.sql1)
+        self._cursor.execute(self._sql1)
         self.df1 = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description])
+            self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description])
 
         self.df1 = self.df1.query(
             '(CYCLE in ["2015.1", "2015.A"]) or '
@@ -205,14 +208,14 @@ class Database(object):
             axis=1
         )
 
-        if self.refresh_apdm:
-            get_all_apdm(self.cursor, self.data_path,
+        if self._refresh_apdm:
+            get_all_apdm(self._cursor, self._data_path,
                          self.projects.OBSPROJECT_UID.unique())
 
-        self.load_obsprojects(path=self.data_path + 'obsproject/')
-        self.load_sciencegoals()
-        self.load_sblocks_meta()
-        self.load_schedblocks()
+        self._load_obsprojects(path=self._data_path + 'obsproject/')
+        self._load_sciencegoals()
+        self._load_sblocks_meta()
+        self._load_schedblocks()
         self.add_imaging_param()
 
     def add_imaging_param(self):
@@ -221,23 +224,56 @@ class Database(object):
             self._schedblocks_temp.minAR_ot / 0.9) * \
             self._schedblocks_temp.repfreq / 100.
         self._schedblocks_temp['OT_BestConf'] = self._schedblocks_temp.apply(
-            lambda x: self.ares.array[
-                wtool.find_array(x['assumedconf_ar_ot'], self.listconf)] if
+            lambda x: self._ares.array[
+                wtool.find_array(x['assumedconf_ar_ot'], self._listconf)] if
             x['array'] == "TWELVE-M" else "N/A",
             axis=1)
-        ar = self._schedblocks_temp.apply(lambda x: self.get_ar_lim(x), axis=1)
+        ar = self._schedblocks_temp.apply(lambda x: self._get_ar_lim(x), axis=1)
         # noinspection PyUnresolvedReferences
         self.schedblocks = pd.concat(
             [self._schedblocks_temp, ar], axis=1).set_index(
             'SB_UID', drop=False)
 
-    def load_obsprojects(self, path):
+    def create_extrainfo(self):
 
+        target_tables_temp = pd.merge(
+            self.orderedtar.query('name != "Calibrators"'),
+            self.target, on=['SB_UID', 'targetId'])
+        target_tables_temp2 = pd.merge(
+            target_tables_temp, self.scienceparam, on=['SB_UID', 'paramRef'])
+
+        target_tables_temp3 = pd.merge(
+            target_tables_temp2, self.fieldsource[
+                ['SB_UID', 'fieldRef', 'name', 'RA', 'DEC', 'isQuery', 'use',
+                 'solarSystem', 'isMosaic', 'pointings', 'ephemeris']
+            ], on=['SB_UID', 'fieldRef'],
+            suffixes=['_target', '_so'])
+
+        self.target_tables = target_tables_temp3.copy().set_index(
+            'targetID', drop=False)
+
+        sb_target_num = self.target_tables.groupby('SB_UID').agg(
+            {'fieldRef': pd.Series.nunique, 'pointings': pd.Series.max,
+             'targetId': pd.Series.nunique, 'paramRef': pd.Series.nunique,
+             'specRef': pd.Series.nunique}).reset_index()
+        self.multi_point_su = sb_target_num.query(
+            'pointings > 1').SB_UID.unique()
+        self.multi_field_su = sb_target_num.query(
+            'fieldRef > 1').SB_UID.unique()
+        self.ephem_su = self.target_tables.query(
+            'solarSystem != "Unspecified"').SB_UID.unique()
+
+    def _load_obsprojects(self, path):
+
+        """
+
+        :type path: str
+        """
         projt = []
 
         for r in self.projects.iterrows():
             xml = r[1].xmlfile
-            proj = self.read_obsproject(xml, path)
+            proj = self._read_obsproject(xml, path)
             projt.append(proj)
 
         projt_arr = np.array(projt, dtype=object)
@@ -249,8 +285,13 @@ class Database(object):
         ).set_index('OBSPROJECT_UID', drop=False)
 
     @staticmethod
-    def read_obsproject(xml, path):
+    def _read_obsproject(xml, path):
 
+        """
+
+        :type path: basestring
+        :type xml: basestring
+        """
         try:
             obsparse = ObsProject(xml, path)
         except KeyError:
@@ -259,7 +300,7 @@ class Database(object):
 
         return obsparse.get_info()
 
-    def load_sciencegoals(self):
+    def _load_sciencegoals(self):
 
         sgt = []
         tart = []
@@ -276,7 +317,7 @@ class Database(object):
             xml = obsproposal_uid.replace('://', '___').replace('/', '_')
             xml += '.xml'
             code = r[1].CODE
-            obspropparse = self.read_sciencegoal(code, xml, obsproject_uid)
+            obspropparse = self._read_sciencegoal(code, xml, obsproject_uid)
 
             if obspropparse == 0:
                 continue
@@ -347,12 +388,12 @@ class Database(object):
                      'bandwidth', 'spectralRes', 'isSkyFreq']
         )
 
-    def read_sciencegoal(self, code, xml, obsproject_uid):
+    def _read_sciencegoal(self, code, xml, obsproject_uid):
 
         try:
             if self.projects.ix[code, 'phase'] == 'I':
                 obspropparse = ObsProposal(
-                    xml, obsproject_uid, self.data_path + 'obsproposal/')
+                    xml, obsproject_uid, self._data_path + 'obsproposal/')
                 obspropparse.get_sg()
             else:
                 # print "Processing Phase II %s" % r[1].CODE
@@ -360,21 +401,21 @@ class Database(object):
                     '/', '_')
                 xml += '.xml'
                 obspropparse = ObsProject(
-                    xml, self.data_path + 'obsproject/')
+                    xml, self._data_path + 'obsproject/')
                 obspropparse.get_sg()
             return obspropparse
         except IOError:
             print("Something went wrong while trying to parse %s" % xml)
             return 0
 
-    def load_sblocks_meta(self):
+    def _load_sblocks_meta(self):
 
         sbt = []
         for r in self.obsproject.iterrows():
 
             code = r[1].CODE
             phase = self.projects.ix[code, 'phase']
-            parse = self.read_sblock_meta(phase, r)
+            parse = self._read_sblock_meta(phase, r)
 
             if parse == 0:
                 continue
@@ -394,7 +435,7 @@ class Database(object):
             "SG OUS \(", "")
         self.sblocks['sg_name'] = self.sblocks.sg_name.str.slice(0, -1)
 
-    def read_sblock_meta(self, phase, r):
+    def _read_sblock_meta(self, phase, r):
 
         if phase == 'I':
             obsreview_uid = r[1].OBSREVIEW_UID
@@ -403,7 +444,7 @@ class Database(object):
             xml = obsreview_uid.replace('://', '___').replace('/', '_')
             xml += '.xml'
             try:
-                parse = ObsReview(xml, self.data_path + 'obsreview/')
+                parse = ObsReview(xml, self._data_path + 'obsreview/')
                 parse.get_sg_sb()
             except IOError:
                 print("Something went wrong while trying to parse %s" % xml)
@@ -413,7 +454,7 @@ class Database(object):
             xml = obsproject_uid.replace('://', '___').replace('/', '_')
             xml += '.xml'
             try:
-                parse = ObsProject(xml, self.data_path + 'obsproject/')
+                parse = ObsProject(xml, self._data_path + 'obsproject/')
                 parse.get_sg_sb()
             except IOError:
                 print("Something went wrong while trying to parse %s" % xml)
@@ -421,9 +462,9 @@ class Database(object):
 
         return parse
 
-    def load_schedblocks(self, sb_path='schedblock/'):
+    def _load_schedblocks(self, sb_path='schedblock/'):
 
-        path = self.data_path + sb_path
+        path = self._data_path + sb_path
 
         rst = []
         rft = []
@@ -583,9 +624,9 @@ class Database(object):
 
     def update_apdm(self, obsproject_uid):
 
-        proj_xmlfile = get_apdm(self.cursor, self.data_path, obsproject_uid)
-        proj = [self.read_obsproject(
-            proj_xmlfile, self.data_path + 'obsproject/')]
+        proj_xmlfile = get_apdm(self._cursor, self._data_path, obsproject_uid)
+        proj = [self._read_obsproject(
+            proj_xmlfile, self._data_path + 'obsproject/')]
         projt_arr = np.array(proj, dtype=object)
         obsproject = pd.DataFrame(
             projt_arr,
@@ -596,18 +637,18 @@ class Database(object):
 
         self.obsproject.update(obsproject)
         self.update_from_archive()
-        self.update_sciencegoal(obsproject_uid)
-        self.update_sblock_meta(obsproject_uid)
-        self.update_schedblock(obsproject_uid)
+        self._update_sciencegoal(obsproject_uid)
+        self._update_sblock_meta(obsproject_uid)
+        self._update_schedblock(obsproject_uid)
         self.add_imaging_param()
 
-    def update_sciencegoal(self, obsproject_uid):
+    def _update_sciencegoal(self, obsproject_uid):
 
         obsproposal_uid = self.obsproject.ix[obsproject_uid, 'OBSPROPOSAL_UID']
         prop_xmlfile = obsproposal_uid.replace('://', '___').replace('/', '_')
         prop_xmlfile += '.xml'
         code = self.obsproject.ix[obsproject_uid, 'CODE']
-        obspropparse = self.read_sciencegoal(
+        obspropparse = self._read_sciencegoal(
             code, prop_xmlfile, obsproject_uid)
         for sg in obspropparse.sciencegoals:
             self.sciencegoals.ix[sg[0]] = np.array(sg, dtype=object)
@@ -669,10 +710,10 @@ class Database(object):
             )
             self.temp_param = self.temp_param.append(temppar, ignore_index=True)
 
-    def update_sblock_meta(self, obsproject_uid):
+    def _update_sblock_meta(self, obsproject_uid):
         r = [0, None]
         r[1] = self.obsproject.ix[obsproject_uid]
-        parse = self.read_sblock_meta('II', r)
+        parse = self._read_sblock_meta('II', r)
         sbt = []
         sbt.extend(parse.sg_sb)
         sbt_arr = np.array(sbt, dtype=object)
@@ -689,8 +730,8 @@ class Database(object):
         sblocks['sg_name'] = sblocks.sg_name.str.slice(0, -1)
         self.sblocks.update(sblocks)
 
-    def update_schedblock(self, obsproject_uid, sb_path='schedblock/'):
-        path = self.data_path + sb_path
+    def _update_schedblock(self, obsproject_uid, sb_path='schedblock/'):
+        path = self._data_path + sb_path
         rst = []
         rft = []
         tart = []
@@ -874,14 +915,14 @@ class Database(object):
 
     def update_from_archive(self):
 
-        self.cursor.execute(self.sql1)
+        self._cursor.execute(self._sql1)
         self.df1 = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description])
+            self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description])
 
-        self.cursor.execute(self.sql_executive)
+        self._cursor.execute(self._sql_executive)
         self.executive = pd.DataFrame(
-            self.cursor.fetchall(), columns=['OBSPROJECT_UID', 'EXEC'])
+            self._cursor.fetchall(), columns=['OBSPROJECT_UID', 'EXEC'])
 
         # noinspection PyUnusedLocal
         status = self.status
@@ -908,20 +949,20 @@ class Database(object):
 
     def update_status(self):
 
-        self.cursor.execute(self.sqlqa0)
+        self._cursor.execute(self._sqlqa0)
         self.aqua_execblock = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description]
+            self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
 
-        self.cursor.execute(self.sql_sbstates)
+        self._cursor.execute(self._sql_sbstates)
         self.sb_status = pd.DataFrame(
-            self.cursor.fetchall(),
-            columns=[rec[0] for rec in self.cursor.description]
+            self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
 
     # noinspection PyUnusedLocal
-    def get_ar_lim(self, sbrow):
+    def _get_ar_lim(self, sbrow):
 
         ouid = sbrow['OBSPROJECT_UID']
         sgn = sbrow['SG_ID']
@@ -988,7 +1029,7 @@ class Database(object):
 
         # noinspection PyBroadException
         try:
-            minar, maxar, conf1, conf2 = self.ares.run(
+            minar, maxar, conf1, conf2 = self._ares.run(
                 sgrow['ARcor'], sgrow['LAScor'], sbrow['DEC'], sgrow['useACA'],
                 num12, sbrow['OT_BestConf'], uid)
         except:
