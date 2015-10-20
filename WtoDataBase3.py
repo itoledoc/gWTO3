@@ -150,8 +150,8 @@ class Database(object):
         self._c7 = np.sqrt(self._ares.data[6][1] * self._ares.data[6][2])
         self._c8 = np.sqrt(self._ares.data[7][1] * self._ares.data[7][2])
         self._listconf = [
-            self._c1, self._c2, self._c3, self._c4, self._c5, self._c6, self._c7,
-            self._c8]
+            self._c1, self._c2, self._c3, self._c4, self._c5, self._c6,
+            self._c7, self._c8]
         self.start_apa()
 
     def start_apa(self, update_arch=False):
@@ -250,7 +250,7 @@ class Database(object):
             suffixes=['_target', '_so'])
 
         self.target_tables = target_tables_temp3.copy().set_index(
-            'targetID', drop=False)
+            'targetId', drop=False)
 
         sb_target_num = self.target_tables.groupby('SB_UID').agg(
             {'fieldRef': pd.Series.nunique, 'pointings': pd.Series.max,
