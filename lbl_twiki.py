@@ -173,7 +173,7 @@ def print_c368():
         '][' + x['SB UID'] + ']]' if len(x['SB UID']) > 0 else '^', axis=1)
     f = open('twiki.txt', 'w')
     s = tabulate(table_8fin.set_index('SB UID'), tablefmt='orgtbl')
-    f.write(s)
+    f.write(header + s)
     f.close()
 
 
