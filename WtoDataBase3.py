@@ -41,7 +41,7 @@ conflim = pd.Series(
      'C36-7': 0.20499999999999999,
      'C36-8': 0.0})
 
-phase_i_status = ["Phase1Submitted", "Rejected", "Approved"]
+phase_i_status = ["Phase1Submitted", "Approved"]
 
 
 # noinspection PyAttributeOutsideInit
@@ -52,7 +52,7 @@ class WtoDatabase3(object):
     dataframes, and it also has the methods to connect and query the OSF
     archive for this info.
 
-    A default instance will use the directory $HOME/.wto as a cache, and by
+    A default instance will use the directory $HOME/.Wto as a cache, and by
     default find the approved Cycle 2 projects and carried-over Cycle 1
     projects. If a file name or list are given as 'source' parameter, only the
     information of the projects in that list or filename will be ingested.
@@ -63,7 +63,7 @@ class WtoDatabase3(object):
 
     """
 
-    def __init__(self, refresh_apdm=True, path=None, allc2=False):
+    def __init__(self, refresh_apdm=True, path=None, allc2=True, loadp1=True):
         """
         Initialize the WTO3 database
         :type refresh_apdm: bool
@@ -72,14 +72,14 @@ class WtoDatabase3(object):
 
         self._refresh_apdm = refresh_apdm
         self.allc2 = allc2
+        self.loadp1 = loadp1
         # Default Paths and Preferences
         self._wto_path = os.environ['WTO']
         if path:
             self._data_path = path
         else:
             self._data_path = os.environ['APDM_C3']
-        self.status = ["Canceled", "Approved", "Phase1Submitted",
-                       "Rejected"]
+        self.status = ["Canceled", "Rejected"]
         self.obsproject = pd.DataFrame()
         self._ares = ARes.ArrayRes(self._wto_path + 'conf/')
 
@@ -209,7 +209,7 @@ class WtoDatabase3(object):
             on='OBSPROJECT_UID'
         ).set_index('CODE', drop=False)
 
-        print(len(self.df1.query('PRJ_STATUS not in @status')))
+        # print(len(self.df1.query('PRJ_STATUS not in @status')))
 
         self.projects = pd.merge(
             self.df1.query('PRJ_STATUS not in @status'), self.executive,
@@ -225,9 +225,17 @@ class WtoDatabase3(object):
             axis=1
         )
 
+        if not self.loadp1:
+            self.projects = self.projects.query('phase == "II"').copy()
+
         if self._refresh_apdm:
+            print("Downloading APDM data for %d projects...\n" %
+                  len(self.projects))
+            phase1uids = self.projects.query(
+                'phase == "I"').OBSPROJECT_UID.unique()
             get_all_apdm(self._cursor, self._data_path,
-                         self.projects.OBSPROJECT_UID.unique())
+                         self.projects.OBSPROJECT_UID.unique(),
+                         phase1uids)
 
         self._load_obsprojects(path=self._data_path + 'obsproject/')
         self._load_sciencegoals()
@@ -966,6 +974,8 @@ class WtoDatabase3(object):
             lambda r: 'I' if r['PRJ_STATUS'] in phase_i_status else 'II',
             axis=1
         )
+        if not self.loadp1:
+            self.projects = self.projects.query('phase == "II"').copy()
 
     def update_status(self):
 

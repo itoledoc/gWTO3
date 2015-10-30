@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import ephem
+import os
 import wto3_tools as wtool
 
 from WtoDataBase3 import WtoDatabase3
@@ -34,6 +35,8 @@ ALMA1.long = '-67.7551257'
 ALMA1.elev = 5060
 ALMA1.horizon = ephem.degrees(str('20'))
 
+home = os.environ['HOME']
+
 
 # noinspection PyAttributeOutsideInit
 class WtoAlgorithm3(WtoDatabase3):
@@ -44,9 +47,10 @@ class WtoAlgorithm3(WtoDatabase3):
 
     :return: A WtoAlgorithm instance.
     """
-    def __init__(self, refresh_apdm=True):
+    def __init__(self, refresh_apdm=True, path=None, allc2=False, loadp1=False):
 
-        super(WtoAlgorithm3, self).__init__(refresh_apdm)
+        super(WtoAlgorithm3, self).__init__(
+            refresh_apdm=refresh_apdm, path=path, allc2=allc2, loadp1=loadp1)
 
     def sched_db(self):
         pass
