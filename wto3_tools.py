@@ -57,7 +57,8 @@ def create_dates(data_arin):
     return data_ar
 
 
-def observable(ra1, dec1, alma, isephem, min_ar, max_ar, array, sbuid):
+def observable(ra1, dec1, alma, ranull, min_ar, max_ar, array, sbuid,
+               horizon=20):
 
     datet = alma.date
     conf = [None, None, None, None, None, None, None, None]
@@ -69,7 +70,7 @@ def observable(ra1, dec1, alma, isephem, min_ar, max_ar, array, sbuid):
                 conf[i] = 'C36-' + str(i + 1)
                 twelve_good += 1
 
-    if isephem == 0:
+    if ranull == 0:
         return pd.Series([sbuid, None, None, None, 'ephem', conf[0], conf[1],
                           conf[2], conf[3], conf[4], conf[5], conf[6], conf[7],
                           twelve_good],
@@ -80,6 +81,7 @@ def observable(ra1, dec1, alma, isephem, min_ar, max_ar, array, sbuid):
     obj = ephem.FixedBody()
     obj._ra = pd.np.deg2rad(ra1)
     obj._dec = pd.np.deg2rad(dec1)
+    alma.horizon = ephem.degrees(str(horizon))
     obj.compute(alma)
     if obj.circumpolar:
         return pd.Series([sbuid,  0., 23.99999, 24., 'circumpol', conf[0],
@@ -89,7 +91,17 @@ def observable(ra1, dec1, alma, isephem, min_ar, max_ar, array, sbuid):
                                 'C36_2', 'C36_3', 'C36_4', 'C36_5', 'C36_6',
                                 'C36_7', 'C36_8', 'twelve_good'])
 
-    sets = alma.next_setting(obj)
+    try:
+        sets = alma.next_setting(obj)
+    except ephem.NeverUpError:
+        return pd.Series([sbuid, None, None, None,
+                          'Never over %d deg' % horizon, conf[0], conf[1],
+                          conf[2], conf[3], conf[4], conf[5], conf[6], conf[7],
+                          twelve_good],
+                         index=['SB_UID', 'rise', 'set', 'up', 'note', 'C36_1',
+                                'C36_2', 'C36_3', 'C36_4', 'C36_5', 'C36_6',
+                                'C36_7', 'C36_8', 'twelve_good'])
+
     rise = alma.previous_rising(obj)
     alma.date = rise
     lstr = alma.sidereal_time()
@@ -459,5 +471,5 @@ def read_ephemeris(ephemeris, date):
                 ra = ephem.hours(ra_temp.replace(' ', ':'))
                 dec = ephem.degrees(dec_temp.replace(' ', ':'))
                 ephe = True
-                print(ra, dec, ephe, now)
+                # print(ra, dec, ephe, now)
                 return pd.np.degrees(ra), pd.np.degrees(dec), ephe

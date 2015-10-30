@@ -45,7 +45,7 @@ phase_i_status = ["Phase1Submitted", "Rejected", "Approved"]
 
 
 # noinspection PyAttributeOutsideInit
-class Database(object):
+class WtoDatabase3(object):
 
     """
     Database is the class that stores the Projects and SB information in
@@ -63,7 +63,7 @@ class Database(object):
 
     """
 
-    def __init__(self, refresh_apdm=True, path=None):
+    def __init__(self, refresh_apdm=True, path=None, allc2=False):
         """
         Initialize the WTO3 database
         :type refresh_apdm: bool
@@ -71,6 +71,7 @@ class Database(object):
         """
 
         self._refresh_apdm = refresh_apdm
+        self.allc2 = allc2
         # Default Paths and Preferences
         self._wto_path = os.environ['WTO']
         if path:
@@ -114,17 +115,23 @@ class Database(object):
         # self.qa0: QAO flags for observed SBs
         # Query QA0 flags from AQUA tables
         self._sqlqa0 = str(
-            "SELECT SCHEDBLOCKUID as SB_UID, QA0STATUS, STARTTIME, ENDTIME,"
-            "EXECBLOC"
-            "KUID, EXECFRACTION "
-            "FROM ALMA.AQUA_V_EXECBLOCK "
-            "WHERE regexp_like (OBSPROJECTCODE, '^201[35]\..*\.[AST]')")
+            "SELECT aqua.SCHEDBLOCKUID as SB_UID, aqua.EXECBLOCKUID, "
+            "aqua.STARTTIME, aqua.ENDTIME, aqua.QA0STATUS, shift.SE_STATUS, "
+            "shift.SE_PROJECT_CODE, shift.SE_ARRAYENTRY_ID "
+            "FROM ALMA.AQUA_V_EXECBLOCK aqua, ALMA.SHIFTLOG_ENTRIES shift "
+            "WHERE regexp_like (aqua.OBSPROJECTCODE, '^201[35]\..*\.[AST]') "
+            "AND aqua.EXECBLOCKUID = shift.SE_EB_UID")
 
         self._cursor.execute(self._sqlqa0)
         self.aqua_execblock = pd.DataFrame(
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
+        self.aqua_execblock['delta'] = self.aqua_execblock.ENDTIME - \
+            self.aqua_execblock.STARTTIME
+        self.aqua_execblock['delta'] = self.aqua_execblock.apply(
+            lambda x: x['delta'].total_seconds() / 3600., axis=1
+        )
 
         # Query for Executives
         self._sql_executive = str(
@@ -187,9 +194,20 @@ class Database(object):
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description])
 
-        self.df1 = self.df1.query(
-            '(CYCLE in ["2015.1", "2015.A"]) or '
-            '(CYCLE in ["2013.1", "2013.A"] and DC_LETTER_GRADE == "A")').copy()
+        if self.allc2:
+            self.df1 = self.df1.query(
+                '(CYCLE in ["2015.1", "2015.A"]) or '
+                '(CYCLE in ["2013.1", "2013.A"] and '
+                ' DC_LETTER_GRADE == ["A", "B", "C"])').copy()
+        else:
+            self.df1 = self.df1.query(
+                '(CYCLE in ["2015.1", "2015.A"]) or '
+                '(CYCLE in ["2013.1", "2013.A"] and '
+                'DC_LETTER_GRADE == "A")').copy()
+        self.projects = pd.merge(
+            self.df1.query('PRJ_STATUS not in @status'), self.executive,
+            on='OBSPROJECT_UID'
+        ).set_index('CODE', drop=False)
 
         print(len(self.df1.query('PRJ_STATUS not in @status')))
 
@@ -198,10 +216,6 @@ class Database(object):
             on='OBSPROJECT_UID'
         ).set_index('CODE', drop=False)
 
-        timestamp = pd.Series(
-            np.zeros(len(self.projects), dtype=object),
-            index=self.projects.index)
-        self.projects['timestamp'] = timestamp
         self.projects['xmlfile'] = self.projects.apply(
             lambda r: r['OBSPROJECT_UID'].replace('://', '___').replace(
                 '/', '_') + '.xml', axis=1
@@ -929,18 +943,21 @@ class Database(object):
 
         # noinspection PyUnusedLocal
         status = self.status
-        self.df1 = self.df1.query(
-            '(CYCLE in ["2015.1", "2015.A"]) or '
-            '(CYCLE in ["2013.1", "2013.A"] and DC_LETTER_GRADE == "A")').copy()
+        if self.allc2:
+            self.df1 = self.df1.query(
+                '(CYCLE in ["2015.1", "2015.A"]) or '
+                '(CYCLE in ["2013.1", "2013.A"] and '
+                ' DC_LETTER_GRADE == ["A", "B", "C"])').copy()
+        else:
+            self.df1 = self.df1.query(
+                '(CYCLE in ["2015.1", "2015.A"]) or '
+                '(CYCLE in ["2013.1", "2013.A"] and '
+                'DC_LETTER_GRADE == "A")').copy()
         self.projects = pd.merge(
             self.df1.query('PRJ_STATUS not in @status'), self.executive,
             on='OBSPROJECT_UID'
         ).set_index('CODE', drop=False)
 
-        timestamp = pd.Series(
-            np.zeros(len(self.projects), dtype=object),
-            index=self.projects.index)
-        self.projects['timestamp'] = timestamp
         self.projects['xmlfile'] = self.projects.apply(
             lambda r: r['OBSPROJECT_UID'].replace('://', '___').replace(
                 '/', '_') + '.xml', axis=1
@@ -957,6 +974,11 @@ class Database(object):
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
+        self.aqua_execblock['delta'] = self.aqua_execblock.ENDTIME - \
+            self.aqua_execblock.STARTTIME
+        self.aqua_execblock['delta'] = self.aqua_execblock.apply(
+            lambda x: x['delta'].total_seconds() / 3600., axis=1
+        )
 
         self._cursor.execute(self._sql_sbstates)
         self.sb_status = pd.DataFrame(

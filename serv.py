@@ -18,6 +18,6 @@ class StringGenerator(object):
 
 if __name__ == '__main__':
 
-    cherrypy.config.update({'server.socket_host': '10.200.113.71'})
+    cherrypy.config.update({'server.socket_host': '10.200.100.160'})
     datas = Wto.WtoAlgorithm3()
     cherrypy.quickstart(StringGenerator(datas))
