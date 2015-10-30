@@ -12,6 +12,23 @@ ALMA1.long = '-67.7551257'
 ALMA1.elev = 5060
 ALMA1.horizon = ephem.degrees(str('20'))
 
+header = str(
+    '*NOTE*: This page is regenerated at least once a day. Feel free to '
+    'modify numbers of executions. If you need to add a comment, please use '
+    'the link in the first column (SB UID): if only a \'?\' (question mark) '
+    'is shown at the end of the SB UID, click on it and a new wiki page for '
+    'comments will be generated; if the SB UID is underlined it means that '
+    'the link is already created, and you should add comments there. '
+    'The project code links with the project tracker. *The LST Range columns'
+    ' gives the rising and setting times in LST hours, for a minimum '
+    'altitude of 30 degrees*\n\n%TABLE{tablerules="rows"}%\n| *SB UID / '
+    'Link to comments (scheduling, problems)*  | *Project Code* | '
+    '*SG Name*  | *SB Name*  | *Band*  | *RA*  | *LST Range* |  '
+    '*Exec. Count* |  *Pass Obs.* |  *Unset Obs.* |  *Total Obs.* | '
+    '*SB Note / EB UID (link to Aqua) and LST Range*  | *SB / EB Status*  '
+    '| *Prj. Status*  |  *Critical or Pol (See instructions in block wiki)*'
+    '  ||\n')
+
 
 def get_lst(datestr, observer):
     observer.date = ephem.Date(datestr)
@@ -297,8 +314,9 @@ def print_c367():
         lambda x: '[[' + x['SB UID'].replace('uid://', '').replace('/', '_') +
         '][' + x['SB UID'] + ']]' if len(x['SB UID']) > 0 else '^', axis=1)
     f = open('twiki.txt', 'w')
+
     s = tabulate(table_7fin.set_index('SB UID'), tablefmt='orgtbl')
-    f.write(s)
+    f.write(header + s)
     f.close()
 
 
