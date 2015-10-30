@@ -154,8 +154,10 @@ def print_c368():
     table_8fin['SB UID'] = table_8fin.apply(
         lambda x: '[[' + x['SB UID'].replace('uid://', '').replace('/', '_') +
         '][' + x['SB UID'] + ']]' if len(x['SB UID']) > 0 else '^', axis=1)
-    print(
-        tabulate(table_8fin.set_index('SB UID'), tablefmt='orgtbl'))
+    f = open('twiki.txt', 'w')
+    s = tabulate(table_8fin.set_index('SB UID'), tablefmt='orgtbl')
+    f.write(s)
+    f.close()
 
 
 def print_c367():
@@ -294,8 +296,10 @@ def print_c367():
     table_7fin['SB UID'] = table_7fin.apply(
         lambda x: '[[' + x['SB UID'].replace('uid://', '').replace('/', '_') +
         '][' + x['SB UID'] + ']]' if len(x['SB UID']) > 0 else '^', axis=1)
-    print(
-        tabulate(table_7fin.set_index('SB UID'), tablefmt='orgtbl'))
+    f = open('twiki.txt', 'w')
+    s = tabulate(table_7fin.set_index('SB UID'), tablefmt='orgtbl')
+    f.write(s)
+    f.close()
 
 
 if __name__ == '__main__':
