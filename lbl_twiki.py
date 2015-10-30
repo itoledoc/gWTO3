@@ -12,9 +12,6 @@ ALMA1.long = '-67.7551257'
 ALMA1.elev = 5060
 ALMA1.horizon = ephem.degrees(str('20'))
 
-datas = Wto.WtoAlgorithm3(path=Wto.home + '/.twiki/')
-datas.write_ephem_coords()
-
 
 def get_lst(datestr, observer):
     observer.date = ephem.Date(datestr)
@@ -301,17 +298,21 @@ def print_c367():
         tabulate(table_7fin.set_index('SB UID'), tablefmt='orgtbl'))
 
 
-if __name__ == 'main':
+if __name__ == '__main__':
 
     parser = OptionParser()
     parser.add_option(
-        "--conf", type=float, default='c368',
+        "--conf", type=str, default='c368',
         help="Configuration to check: c368 or c367")
 
     opts, args = parser.parse_args()
+    print "Twiki for %s" % opts.conf
     if opts.conf not in ['c368', 'c367']:
         print("Use either c368 or c367 as input for --conf")
         sys.exit(1)
+
+    datas = Wto.WtoAlgorithm3(path=Wto.home + '/.twiki/')
+    datas.write_ephem_coords()
 
     datas.observable_param(horizon=30)
     datas.aqua_execblock['LST_START'] = datas.aqua_execblock.apply(
