@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import WtoAlgorithm3 as Wto
 import pandas as pd
 import ephem
