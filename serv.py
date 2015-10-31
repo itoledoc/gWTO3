@@ -5,14 +5,15 @@ import cherrypy
 
 class StringGenerator(object):
 
-    def __init__(self, datas):
+    def __init__(self, data):
 
-        self.datas = datas
+        self.datas = data
 
     @cherrypy.expose
     def index(self):
         return "Hello world!"
 
+    # noinspection PyUnusedLocal
     @cherrypy.expose
     def generate(self, array="TWELVE-M"):
         return self.datas.schedblocks.query('array == @array').to_json()

@@ -44,6 +44,7 @@ def color_states(state):
         return '<font color="orange"><strong>' + state + '</strong></font>'
 
 
+# noinspection PyUnusedLocal
 def print_c368():
 
     c368 = datas.schedblocks.query(
@@ -65,14 +66,14 @@ def print_c368():
 
     table_8 = c368_ssp.query(
         'CYCLE != "2013.A" and DC_LETTER_GRADE != "C"').sort('RA')[
-        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'RA', 'execount', 'sbNote',
-         'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained', 'isPolarization',
-         'OBSPROJECT_UID']].sort('RA')
+        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'RA', 'execount',
+         'sbNote', 'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained',
+         'isPolarization', 'OBSPROJECT_UID']].sort('RA')
     table_8['RA'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['RA'] / 15.),
-                        int(4 * (ro1['RA'] - int(ro1['RA'])))))
-        , axis=1).astype(str).str.slice(0, 5)
+                        int(4 * (ro1['RA'] - int(ro1['RA']))))),
+        axis=1).astype(str).str.slice(0, 5)
 
     table_8 = pd.merge(
         table_8,
@@ -80,14 +81,15 @@ def print_c368():
         on='SB_UID', how='left').set_index('SB_UID', drop=False)
     table_8['rise_lst'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
-            pd.datetime(2015, 1, 1, int(ro1['rise']),
-                        int(60. * (ro1['rise'] - int(ro1['rise'])))))
-        , axis=1)
+            pd.datetime(
+                2015, 1, 1, int(ro1['rise']),
+                int(60. * (ro1['rise'] - int(ro1['rise']))))),
+        axis=1)
     table_8['set_lst'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
-                        int(60. * (ro1['set'] - int(ro1['set'])))))
-        , axis=1)
+                        int(60. * (ro1['set'] - int(ro1['set']))))),
+        axis=1)
     table_8['rise_lst'] = table_8.rise_lst.astype(str).str.slice(0, 5)
     table_8['set_lst'] = table_8.set_lst.astype(str).str.slice(0, 5)
     table_8['range'] = table_8.rise_lst + '-' + table_8.set_lst
@@ -102,10 +104,12 @@ def print_c368():
         left_index=True, right_on='SB_UID', how='left').fillna(0)
 
     table_8b['Observed'] = table_8b.Unset + table_8b.Pass
-    table_8b['execount'] = table_8b.apply(lambda x: str(int(x['execount'])), axis=1)
+    table_8b['execount'] = table_8b.apply(lambda x: str(int(x['execount'])),
+                                          axis=1)
     table_8b['Unset'] = table_8b.apply(lambda x: str(int(x['Unset'])), axis=1)
     table_8b['Pass'] = table_8b.apply(lambda x: str(int(x['Pass'])), axis=1)
-    table_8b['Observed'] = table_8b.apply(lambda x: str(int(x['Observed'])), axis=1)
+    table_8b['Observed'] = table_8b.apply(lambda x: str(int(x['Observed'])),
+                                          axis=1)
     table_8b['NOTE'] = None
     table_8b['sbNote'] = table_8b.sbNote.str.replace('\n', ' ')
     table_8b['sbNote'] = table_8b.apply(
@@ -125,14 +129,17 @@ def print_c368():
     table_8b['sbName'] = table_8b.apply(lambda x: '!' + x['sbName'], axis=1)
 
     table_8b = table_8b[
-        [u'CODE', u'SG_ID', u'sbName', u'band', u'RA', u'range', u'execount', u'Pass',
-         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS', u'SB_UID',
+        [u'CODE', u'SG_ID', u'sbName', u'band', u'RA', u'range', u'execount',
+         u'Pass',
+         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS',
+         u'SB_UID',
          u'isTimeConstrained']]
 
     table_8b.columns = pd.Index(
         [u'Project Code', u'SG Name', u'SB Name', u'Band', u'RA', u'LST Range',
          u'Exec. Count', u'Pass Obs.', u'Unset Obs.', u'Total Obs.', u'SB Note',
-         u'SB Status', u'Prj. Status', u'SB UID', u'Critical (See instructions)'],
+         u'SB Status', u'Prj. Status', u'SB UID',
+         u'Critical (See instructions)'],
         dtype='object')
 
     table_8b.sort('RA', inplace=True)
@@ -177,11 +184,13 @@ def print_c368():
     f.close()
 
 
+# noinspection PyUnusedLocal
 def print_c367():
 
     c367 = datas.schedblocks.query(
         'BestConf == "C36-7"')[
-        ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA', 'execount',
+        ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA',
+         'execount',
          'OBSPROJECT_UID', 'isPolarization']]
 
     c367_s = pd.merge(c367, datas.sb_status[['SB_UID', 'SB_STATE']],
@@ -198,14 +207,16 @@ def print_c367():
 
     table_7 = c367_ssp.query(
         'CYCLE != "2013.A" and DC_LETTER_GRADE != "C"').sort('RA')[
-        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'RA', 'execount', 'sbNote',
-         'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained', 'isPolarization',
+        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'RA', 'execount',
+         'sbNote',
+         'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained',
+         'isPolarization',
          'OBSPROJECT_UID']].sort('RA')
     table_7['RA'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['RA'] / 15.),
-                        int(4 * (ro1['RA'] - int(ro1['RA'])))))
-        , axis=1).astype(str).str.slice(0, 5)
+                        int(4 * (ro1['RA'] - int(ro1['RA']))))),
+        axis=1).astype(str).str.slice(0, 5)
 
     table_7 = pd.merge(
         table_7,
@@ -214,13 +225,13 @@ def print_c367():
     table_7['rise_lst'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['rise']),
-                        int(60. * (ro1['rise'] - int(ro1['rise'])))))
-        , axis=1)
+                        int(60. * (ro1['rise'] - int(ro1['rise']))))),
+        axis=1)
     table_7['set_lst'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
-                        int(60. * (ro1['set'] - int(ro1['set'])))))
-        , axis=1)
+                        int(60. * (ro1['set'] - int(ro1['set']))))),
+        axis=1)
     table_7['rise_lst'] = table_7.rise_lst.astype(str).str.slice(0, 5)
     table_7['set_lst'] = table_7.set_lst.astype(str).str.slice(0, 5)
     table_7['range'] = table_7.rise_lst + '-' + table_7.set_lst
@@ -244,10 +255,12 @@ def print_c367():
             table_7b['Observed'] = 0
             table_7b['Unset'] = 0
 
-    table_7b['execount'] = table_7b.apply(lambda x: str(int(x['execount'])), axis=1)
+    table_7b['execount'] = table_7b.apply(lambda x: str(int(x['execount'])),
+                                          axis=1)
     table_7b['Unset'] = table_7b.apply(lambda x: str(int(x['Unset'])), axis=1)
     table_7b['Pass'] = table_7b.apply(lambda x: str(int(x['Pass'])), axis=1)
-    table_7b['Observed'] = table_7b.apply(lambda x: str(int(x['Observed'])), axis=1)
+    table_7b['Observed'] = table_7b.apply(lambda x: str(int(x['Observed'])),
+                                          axis=1)
     table_7b['NOTE'] = None
     table_7b['sbNote'] = table_7b.sbNote.str.replace('\n', ' ')
     table_7b['sbNote'] = table_7b.apply(
@@ -267,14 +280,17 @@ def print_c367():
     table_7b['sbName'] = table_7b.apply(lambda x: '!' + x['sbName'], axis=1)
 
     table_7b = table_7b[
-        [u'CODE', u'SG_ID', u'sbName', u'band', u'RA', u'range', u'execount', u'Pass',
-         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS', u'SB_UID',
+        [u'CODE', u'SG_ID', u'sbName', u'band', u'RA', u'range', u'execount',
+         u'Pass',
+         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS',
+         u'SB_UID',
          u'isTimeConstrained']]
 
     table_7b.columns = pd.Index(
         [u'Project Code', u'SG Name', u'SB Name', u'Band', u'RA', u'LST Range',
          u'Exec. Count', u'Pass Obs.', u'Unset Obs.', u'Total Obs.', u'SB Note',
-         u'SB Status', u'Prj. Status', u'SB UID', u'Critical (See instructions)'],
+         u'SB Status', u'Prj. Status', u'SB UID',
+         u'Critical (See instructions)'],
         dtype='object')
 
     table_7b.sort('RA', inplace=True)

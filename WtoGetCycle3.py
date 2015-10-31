@@ -72,7 +72,8 @@ def get_all_apdm(cursor, data_path, obsproject_uids, phasei):
             try:
                 data = cursor.fetchall()[0]
                 xml_content = data[1].read()
-                xmlfilename = obspropuid.replace('://', '___').replace('/', '_') + \
+                xmlfilename = obspropuid.replace(
+                    '://', '___').replace('/', '_') + \
                     '.xml'
                 filename = data_path + 'obsproposal/' + xmlfilename
                 io_file = open(filename, 'w')
@@ -96,7 +97,8 @@ def get_all_apdm(cursor, data_path, obsproject_uids, phasei):
             try:
                 data = cursor.fetchall()[0]
                 xml_content = data[1].read()
-                xmlfilename = obsrevuid.replace('://', '___').replace('/', '_') + \
+                xmlfilename = obsrevuid.replace(
+                    '://', '___').replace('/', '_') + \
                     '.xml'
                 filename = data_path + 'obsreview/' + xmlfilename
                 io_file = open(filename, 'w')
@@ -170,7 +172,8 @@ def get_all_apdm(cursor, data_path, obsproject_uids, phasei):
                 try:
                     data = cursor.fetchall()[0]
                     xml_content = data[1].read()
-                    xmlfilename = sbuid.replace('://', '___').replace('/', '_') + \
+                    xmlfilename = sbuid.replace(
+                        '://', '___').replace('/', '_') + \
                         '.xml'
                     filename = data_path + 'schedblock/' + xmlfilename
                     io_file = open(filename, 'w')

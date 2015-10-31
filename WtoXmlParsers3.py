@@ -1008,6 +1008,7 @@ class SchedBlock(object):
     def read_fieldsource(fs, sbuid, array):
         """
 
+        :param array:
         :param fs:
         :param sbuid:
         """

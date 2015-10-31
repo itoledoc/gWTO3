@@ -49,6 +49,10 @@ class WtoAlgorithm3(WtoDatabase3):
     """
     def __init__(self, refresh_apdm=True, path=None, allc2=False, loadp1=False):
 
+        """
+
+        :type refresh_apdm: bool
+        """
         super(WtoAlgorithm3, self).__init__(
             refresh_apdm=refresh_apdm, path=path, allc2=allc2, loadp1=loadp1)
 
@@ -113,6 +117,7 @@ class WtoAlgorithm3(WtoDatabase3):
             # print("What??")
             return 0., 0., False
 
+        # noinspection PyUnboundLocalVariable
         return ra, dec, ephe
 
     def observable_param(self, horizon=20):
