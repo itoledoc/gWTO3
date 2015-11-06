@@ -72,8 +72,8 @@ def print_c368():
     table_8['RA'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['RA'] / 15.),
-                        int(4 * (ro1['RA'] - int(ro1['RA']))))),
-        axis=1).astype(str).str.slice(0, 5)
+                        int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.)))))
+        , axis=1).astype(str).str.slice(0, 5)
 
     table_8 = pd.merge(
         table_8,
@@ -81,15 +81,14 @@ def print_c368():
         on='SB_UID', how='left').set_index('SB_UID', drop=False)
     table_8['rise_lst'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
-            pd.datetime(
-                2015, 1, 1, int(ro1['rise']),
-                int(60. * (ro1['rise'] - int(ro1['rise']))))),
-        axis=1)
+            pd.datetime(2015, 1, 1, int(ro1['rise']),
+                        int(60. * (ro1['rise'] - int(ro1['rise'])))))
+        , axis=1)
     table_8['set_lst'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
-                        int(60. * (ro1['set'] - int(ro1['set']))))),
-        axis=1)
+                        int(60. * (ro1['set'] - int(ro1['set'])))))
+        , axis=1)
     table_8['rise_lst'] = table_8.rise_lst.astype(str).str.slice(0, 5)
     table_8['set_lst'] = table_8.set_lst.astype(str).str.slice(0, 5)
     table_8['range'] = table_8.rise_lst + '-' + table_8.set_lst
@@ -215,8 +214,8 @@ def print_c367():
     table_7['RA'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['RA'] / 15.),
-                        int(4 * (ro1['RA'] - int(ro1['RA']))))),
-        axis=1).astype(str).str.slice(0, 5)
+                        int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.)))))
+        , axis=1).astype(str).str.slice(0, 5)
 
     table_7 = pd.merge(
         table_7,
@@ -225,13 +224,13 @@ def print_c367():
     table_7['rise_lst'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['rise']),
-                        int(60. * (ro1['rise'] - int(ro1['rise']))))),
-        axis=1)
+                        int(60. * (ro1['rise'] - int(ro1['rise'])))))
+        , axis=1)
     table_7['set_lst'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
-                        int(60. * (ro1['set'] - int(ro1['set']))))),
-        axis=1)
+                        int(60. * (ro1['set'] - int(ro1['set'])))))
+        , axis=1)
     table_7['rise_lst'] = table_7.rise_lst.astype(str).str.slice(0, 5)
     table_7['set_lst'] = table_7.set_lst.astype(str).str.slice(0, 5)
     table_7['range'] = table_7.rise_lst + '-' + table_7.set_lst
