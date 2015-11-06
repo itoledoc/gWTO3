@@ -3,14 +3,28 @@ import datetime as dt
 import ephem
 import numpy as np
 
-alma1 = ephem.Observer()
-alma1.lat = '-23.0262015'
-alma1.long = '-67.7551257'
-alma1.elev = 5060
-alma1.horizon = ephem.degrees(str('20'))
+ALMA1 = ephem.Observer()
+ALMA1.lat = '-23.0262015'
+ALMA1.long = '-67.7551257'
+ALMA1.elev = 5060
+ALMA1.horizon = ephem.degrees(str('20'))
 
+SSO = ['Moon', 'Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
+       'Uranus', 'Neptune', 'Pluto']
+MOON = ['Ganymede', 'Europa', 'Callisto', 'Io', 'Titan']
 
-es_cycle3 = [
+ASTEROIDS = {
+    'Ceres': '1 Ceres,e,10.5934,80.3293,72.5220,2.767506,0.2140776,0.07582276,'
+             '95.9892,12/09.0/2014,2000,H 3.34,0.12',
+    'Pallas': '2 Pallas,e,34.8410,173.0962,309.9303,2.771606,0.2136027,'
+              '0.23127367,78.2287,12/09.0/2014,2000,H 4.13,0.11',
+    'Juno': '3 Juno,e,12.9817,169.8712,248.4100,2.670700,0.2258220,0.25544825,'
+            '33.0772,12/09.0/2014,2000,H 5.33,0.32',
+    'Vesta': '4 Vesta,e,7.1404,103.8514,151.1984,2.361793,0.2715446,0.08874010,'
+             '20.8639,12/09.0/2014,2000,H 3.20,0.32'
+}
+
+ES_CYCLE3 = [
     ['2015-10-15', '2015-10-28', 'block21', [8]],
     ['2015-11-10', '2015-11-30', 'block21', [7]],
     ['2015-12-22', '2016-01-18', 'block21', [1]],
@@ -24,7 +38,7 @@ es_cycle3 = [
     ['2016-09-20', '2016-09-30', 'block21', [3]]
 ]
 
-ar_res = [3.4, 1.8, 1.2, 0.7, 0.5, 0.3, 0.1, 0.075]
+AR_RES = [3.4, 1.8, 1.2, 0.7, 0.5, 0.3, 0.1, 0.075]
 
 
 def create_dates(data_arin):
@@ -65,7 +79,7 @@ def observable(ra1, dec1, alma, ranull, min_ar, max_ar, array, sbuid,
     twelve_good = 0
 
     if array == "TWELVE-M":
-        for i, a in enumerate(ar_res):
+        for i, a in enumerate(AR_RES):
             if min_ar <= a <= max_ar:
                 conf[i] = 'C36-' + str(i + 1)
                 twelve_good += 1
@@ -109,7 +123,7 @@ def observable(ra1, dec1, alma, ranull, min_ar, max_ar, array, sbuid,
     lsts = alma.sidereal_time()
     alma.date = datet
     lstr = np.rad2deg(lstr) / 15.
-    lsts = np.rad2deg(lsts) / 15. - 2.
+    lsts = np.rad2deg(lsts) / 15. - 1.
     if lsts < 0:
         lsts += 24
     if lstr > lsts:
@@ -419,6 +433,62 @@ def find_array(value, listconf):
         n += 1
 
     return array
+
+
+def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1):
+
+    """
+
+
+    :param ekind: Ephemeris source name (for external ephemeris), or just
+        'Ephemeris', for internal ephemeris file.
+    :type ekind: str
+    :param ephemstring: The internal ephemeris file, as a string.
+    :type ephemstring: str
+    :param alma: Pyephem Observer method, with the site information
+    :type alma: ephem.Observer
+    :return: ra, dec, ephe
+    ":rtype: float [RA in degrees], float [DEC in degrees],
+        bool [Success]
+    """
+    if ekind == 'Ephemeris':
+        try:
+            ra, dec, ephe = read_ephemeris(ephemstring, ALMA1.date)
+        except TypeError:
+            # print(ephemeris, sourcename)
+            ephe = False
+        if not ephe:
+            # print("Source %s doesn't have ephemeris for current's date" %
+            #        ekind)
+            return 0., 0., False
+
+    elif ekind in MOON:
+        obj = eval('ephem.' + ekind + '()')
+        obj.compute(alma)
+        ra = np.rad2deg(obj.ra)
+        dec = np.rad2deg(obj.dec)
+        ephe = True
+
+    elif ekind in ASTEROIDS.keys():
+        obj = ephem.readdb(ASTEROIDS[ekind])
+        obj.compute(alma)
+        ra = np.rad2deg(obj.ra)
+        dec = np.rad2deg(obj.dec)
+        ephe = True
+
+    elif ekind in SSO:
+        obj = eval('ephem.' + ekind + '()')
+        obj.compute(alma)
+        ra = np.rad2deg(obj.ra)
+        dec = np.rad2deg(obj.dec)
+        ephe = True
+
+    else:
+        # print("What??")
+        return 0., 0., False
+
+    # noinspection PyUnboundLocalVariable
+    return ra, dec, ephe
 
 
 def read_ephemeris(ephemeris, date):

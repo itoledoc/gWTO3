@@ -17,21 +17,21 @@ sbl = '{Alma/ObsPrep/SchedBlock}'
 pd.options.display.width = 200
 pd.options.display.max_columns = 100
 
-confDf = pd.DataFrame(
+CONF_DF = pd.DataFrame(
     [('C36-1', 3.4, 2.3, 1.5, 1.0, 0.7, 0.5, 0.4)],
     columns=['Conf', 'ALMA_RB_03', 'ALMA_RB_04', 'ALMA_RB_06', 'ALMA_RB_07',
              'ALMA_RB_08', 'ALMA_RB_09', 'ALMA_RB_10'],
     index=['C36-1'])
-confDf.ix['C36-2'] = ('C36-2', 1.8, 1.2, 0.8, 0.5, 0.4, 0.3, 0.2)
-confDf.ix['C36-3'] = ('C36-3', 1.2, 0.8, 0.5, 0.4, 0.3, 0.2, 0.1)
-confDf.ix['C36-4'] = ('C36-4', 0.7, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08)
-confDf.ix['C36-5'] = ('C36-5', 0.5, 0.3, 0.2, 0.14, 0.1, 0.07, 0.06)
-confDf.ix['C36-6'] = ('C36-6', 0.3, 0.2, 0.1, 0.08, 0.06, 0.04, 0.03)
-confDf.ix['C36-7'] = ('C36-7', 0.1, 0.08, 0.05, 0.34, None, None, None)
-confDf.ix['C36-8'] = ('C36-8', 0.075, 0.05, 0.03, None, None, None, None)
+CONF_DF.ix['C36-2'] = ('C36-2', 1.8, 1.2, 0.8, 0.5, 0.4, 0.3, 0.2)
+CONF_DF.ix['C36-3'] = ('C36-3', 1.2, 0.8, 0.5, 0.4, 0.3, 0.2, 0.1)
+CONF_DF.ix['C36-4'] = ('C36-4', 0.7, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08)
+CONF_DF.ix['C36-5'] = ('C36-5', 0.5, 0.3, 0.2, 0.14, 0.1, 0.07, 0.06)
+CONF_DF.ix['C36-6'] = ('C36-6', 0.3, 0.2, 0.1, 0.08, 0.06, 0.04, 0.03)
+CONF_DF.ix['C36-7'] = ('C36-7', 0.1, 0.08, 0.05, 0.34, None, None, None)
+CONF_DF.ix['C36-8'] = ('C36-8', 0.075, 0.05, 0.03, None, None, None, None)
 Range = namedtuple('Range', ['start', 'end'])
 
-conflim = pd.Series(
+CONFLIM = pd.Series(
     {'C36-1': 2.8849999999999998,
      'C36-2': 1.72,
      'C36-3': 1.2549999999999999,
@@ -41,7 +41,7 @@ conflim = pd.Series(
      'C36-7': 0.20499999999999999,
      'C36-8': 0.0})
 
-phase_i_status = ["Phase1Submitted", "Approved"]
+PHASE_I_STATUS = ["Phase1Submitted", "Approved"]
 
 
 # noinspection PyAttributeOutsideInit
@@ -59,6 +59,8 @@ class WtoDatabase3(object):
 
     Setting *forcenew* to True will force the cleaning of the cache dir, and
     all information will be processed again.
+
+    :key refresh_apdm
 
 
     """
@@ -221,7 +223,7 @@ class WtoDatabase3(object):
                 '/', '_') + '.xml', axis=1
         )
         self.projects['phase'] = self.projects.apply(
-            lambda r: 'I' if r['PRJ_STATUS'] in phase_i_status else 'II',
+            lambda r: 'I' if r['PRJ_STATUS'] in PHASE_I_STATUS else 'II',
             axis=1
         )
 
@@ -314,8 +316,8 @@ class WtoDatabase3(object):
 
         """
 
-        :type path: basestring
-        :type xml: basestring
+        :type path: str
+        :type xml: str
         """
         try:
             obsparse = ObsProject(xml, path)
@@ -971,7 +973,7 @@ class WtoDatabase3(object):
                 '/', '_') + '.xml', axis=1
         )
         self.projects['phase'] = self.projects.apply(
-            lambda r: 'I' if r['PRJ_STATUS'] in phase_i_status else 'II',
+            lambda r: 'I' if r['PRJ_STATUS'] in PHASE_I_STATUS else 'II',
             axis=1
         )
         if not self.loadp1:
