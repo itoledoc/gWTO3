@@ -105,9 +105,9 @@ class WtoDatabase3(object):
         self._cursor = self._connection.cursor()
 
         self._sql_sbstates = str(
-            "SELECT DOMAIN_ENTITY_STATE as SB_STATE,"
-            "DOMAIN_ENTITY_ID as SB_UID,OBS_PROJECT_ID as OBSPROJECT_UID "
-            "FROM ALMA.SCHED_BLOCK_STATUS")
+            "SELECT PRJ_REF as OBSPROJECT_UID, STATUS as SB_STATE,"
+            "ARCHIVE_UID as SB_UID "
+            "FROM ALMA.BMMV_SCHEDBLOCK")
         self._cursor.execute(self._sql_sbstates)
         self.sb_status = pd.DataFrame(
             self._cursor.fetchall(),

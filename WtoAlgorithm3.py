@@ -65,6 +65,7 @@ class WtoAlgorithm3(WtoDatabase3):
             axis=1)
 
         for r in results.iteritems():
+            print r[0]
             self.schedblocks.ix[r[0], 'RA'] = r[1][0]
             self.schedblocks.ix[r[0], 'DEC'] = r[1][1]
 

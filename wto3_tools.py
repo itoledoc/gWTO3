@@ -123,13 +123,12 @@ def observable(ra1, dec1, alma, ranull, min_ar, max_ar, array, sbuid,
     lsts = alma.sidereal_time()
     alma.date = datet
     lstr = np.rad2deg(lstr) / 15.
-    lsts = np.rad2deg(lsts) / 15. - 1.
-    if lsts < 0:
-        lsts += 24
+    lsts = np.rad2deg(lsts) / 15.
     if lstr > lsts:
         up = 24. - lstr + lsts
     else:
         up = lsts - lstr
+
     return pd.Series([sbuid, lstr, lsts, up, 'OK', conf[0], conf[1], conf[2],
                       conf[3], conf[4], conf[5], conf[6], conf[7], twelve_good],
                      index=['SB_UID', 'rise', 'set', 'up', 'note', 'C36_1',
@@ -435,7 +434,7 @@ def find_array(value, listconf):
     return array
 
 
-def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1):
+def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1, date=None):
 
     """
 
@@ -451,6 +450,11 @@ def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1):
     ":rtype: float [RA in degrees], float [DEC in degrees],
         bool [Success]
     """
+    date_now= ALMA1.date
+
+    if date:
+        ALMA1.date = ephem.Date(date)
+
     if ekind == 'Ephemeris':
         try:
             ra, dec, ephe = read_ephemeris(ephemstring, ALMA1.date)
@@ -458,8 +462,8 @@ def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1):
             # print(ephemeris, sourcename)
             ephe = False
         if not ephe:
-            # print("Source %s doesn't have ephemeris for current's date" %
-            #        ekind)
+            print("Source %s doesn't have ephemeris for current's date" % ekind)
+            ALMA1.date = date_now
             return 0., 0., False
 
     elif ekind in MOON:
@@ -485,9 +489,11 @@ def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1):
 
     else:
         # print("What??")
+        ALMA1.date = date_now
         return 0., 0., False
 
     # noinspection PyUnboundLocalVariable
+    ALMA1.date = date_now
     return ra, dec, ephe
 
 
