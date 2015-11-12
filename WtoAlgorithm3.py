@@ -42,6 +42,21 @@ class WtoAlgorithm3(WtoDatabase3):
         """
         super(WtoAlgorithm3, self).__init__(
             refresh_apdm=refresh_apdm, path=path, allc2=allc2, loadp1=loadp1)
+        self.tau = pd.read_csv(
+            self._wto_path + 'conf/tau.csv', sep=',', header=0).set_index(
+            'freq')
+        self.tsky = pd.read_csv(
+            self._wto_path + 'conf/tskyR.csv', sep=',', header=0).set_index(
+                'freq')
+        self.pwvdata = pd.read_pickle(
+            self._wto_path + 'conf/pwvdata.pandas').set_index(
+                'freq')
+        self.reciever = pd.DataFrame(
+            [55., 45., 75., 110., 51., 150., 230.],
+            columns=['trx'],
+            index=['ALMA_RB_06', 'ALMA_RB_03', 'ALMA_RB_07', 'ALMA_RB_09',
+                   'ALMA_RB_04', 'ALMA_RB_08', 'ALMA_RB_10'])
+        self.reciever['g'] = [0., 0., 0., 1., 0., 0., 1.]
 
     def sched_db(self):
         pass

@@ -23,7 +23,7 @@ header = str(
     ' gives the rising and setting times in LST hours, for a minimum '
     'altitude of 30 degrees*\n\n%TABLE{tablerules="rows"}%\n| *SB UID / '
     'Link to comments (scheduling, problems)*  | *Project Code* | '
-    '*SG Name*  | *SB Name*  | *Band*  | *RA*  | *LST Range* |  '
+    '*SG Name*  | *SB Name*  | *Band*  | *Max. PWV* | *RA*  | *LST Range* |  '
     '*Exec. Count* |  *Pass Obs.* |  *Unset Obs.* |  *Total Obs.* | '
     '*SB Note / EB UID (link to Aqua) and LST Range*  | *SB / EB Status*  '
     '| *Prj. Status*  |  *Critical or Pol (See instructions in block wiki)*'
@@ -35,9 +35,14 @@ def get_lst(datestr, observer):
     return str(observer.sidereal_time())
 
 
-def color_states(state):
+def color_states(state, execount, qunset, qpass):
     if state == "FullyObserved":
         return '<font color="mediumblue"><strong>FullyObs</strong></font>'
+    elif int(qpass) >= int(execount):
+        return '<font color="mediumblue"><strong>FullyObs?</strong></font>'
+    elif (int(qunset) + int(qpass)) >= int(execount):
+        return '<font color="orange"><strong>' + state \
+               + ' (execount reached)</strong></font>'
     elif state == "Ready":
         return '<font color="green"><strong>Ready</strong></font>'
     else:
@@ -45,140 +50,144 @@ def color_states(state):
 
 
 # noinspection PyUnusedLocal
-def print_c368():
+def print_twiki(conf):
 
-    c368 = datas.schedblocks.query(
-        'BestConf == "C36-8"')[
+    c367 = datas.schedblocks.query(
+        'BestConf == @conf')[
         ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA',
-         'execount', 'OBSPROJECT_UID', 'isPolarization']]
+         'execount', 'OBSPROJECT_UID', 'isPolarization', 'maxPWVC']]
 
-    c368_s = pd.merge(c368, datas.sb_status[['SB_UID', 'SB_STATE']],
+    c367_s = pd.merge(c367, datas.sb_status[['SB_UID', 'SB_STATE']],
                       on='SB_UID', how='left')
-    c368_ss = pd.merge(
+    c367_ss = pd.merge(
         datas.sciencegoals[['OBSPROJECT_UID', 'OUS_ID', 'isTimeConstrained']],
-        c368_s, on=['OBSPROJECT_UID', 'OUS_ID'])
-    c368_ssp = pd.merge(
+        c367_s, on=['OBSPROJECT_UID', 'OUS_ID'])
+    c367_ssp = pd.merge(
         pd.merge(
             datas.projects[['OBSPROJECT_UID', 'CODE', 'PRJ_STATUS', 'CYCLE',
                             'DC_LETTER_GRADE']],
             datas.obsproject[['OBSPROJECT_UID', 'NOTE']], on='OBSPROJECT_UID'),
-        c368_ss, on='OBSPROJECT_UID', how='right')
+        c367_ss, on='OBSPROJECT_UID', how='right')
 
-    table_8 = c368_ssp.query(
+    table_7 = c367_ssp.query(
         'CYCLE != "2013.A" and DC_LETTER_GRADE != "C"').sort('RA')[
-        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'RA', 'execount',
-         'sbNote', 'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained',
-         'isPolarization', 'OBSPROJECT_UID']].sort('RA')
-    table_8['RA'] = table_8.apply(
+        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'maxPWVC', 'RA', 'execount', 'sbNote',
+         'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained', 'isPolarization',
+         'OBSPROJECT_UID']].sort('RA')
+    table_7['RA'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['RA'] / 15.),
                         int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.)))))
         , axis=1).astype(str).str.slice(0, 5)
 
-    table_8 = pd.merge(
-        table_8,
+    table_7 = pd.merge(
+        table_7,
         datas.obs_param[['SB_UID', 'rise', 'set']],
         on='SB_UID', how='left').set_index('SB_UID', drop=False)
-    table_8['rise_lst'] = table_8.apply(
+    table_7['rise_lst'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['rise']),
                         int(60. * (ro1['rise'] - int(ro1['rise'])))))
         , axis=1)
-    table_8['set_lst'] = table_8.apply(
+    table_7['set_lst'] = table_7.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
                         int(60. * (ro1['set'] - int(ro1['set'])))))
         , axis=1)
-    table_8['rise_lst'] = table_8.rise_lst.astype(str).str.slice(0, 5)
-    table_8['set_lst'] = table_8.set_lst.astype(str).str.slice(0, 5)
-    table_8['range'] = table_8.rise_lst + '-' + table_8.set_lst
+    table_7['rise_lst'] = table_7.rise_lst.astype(str).str.slice(0, 5)
+    table_7['set_lst'] = table_7.set_lst.astype(str).str.slice(0, 5)
+    table_7['range'] = table_7.rise_lst + '-' + table_7.set_lst
 
-    sbs = table_8.index.unique()
+    sbs = table_7.index.unique()
     qastatus = datas.aqua_execblock.query(
         'SB_UID in @sbs').groupby(
         ['SB_UID', 'QA0STATUS']).QA0STATUS.count().unstack().fillna(0)
 
-    table_8b = pd.merge(
-        table_8, qastatus.reset_index(),
+    table_7b = pd.merge(
+        table_7, qastatus.reset_index(),
         left_index=True, right_on='SB_UID', how='left').fillna(0)
 
-    table_8b['Observed'] = table_8b.Unset + table_8b.Pass
-    table_8b['execount'] = table_8b.apply(lambda x: str(int(x['execount'])),
-                                          axis=1)
-    table_8b['Unset'] = table_8b.apply(lambda x: str(int(x['Unset'])), axis=1)
-    table_8b['Pass'] = table_8b.apply(lambda x: str(int(x['Pass'])), axis=1)
-    table_8b['Observed'] = table_8b.apply(lambda x: str(int(x['Observed'])),
-                                          axis=1)
-    table_8b['NOTE'] = None
-    table_8b['sbNote'] = table_8b.sbNote.str.replace('\n', ' ')
-    table_8b['sbNote'] = table_8b.apply(
+    try:
+        table_7b['Observed'] = table_7b.Unset + table_7b.Pass
+    except AttributeError:
+        try:
+            table_7b['Observed'] = table_7b.Unset
+            table_7b['Pass'] = 0
+        except AttributeError:
+            table_7b['Observed'] = 0
+            table_7b['Unset'] = 0
+
+    table_7b['execount'] = table_7b.apply(lambda x: str(int(x['execount'])), axis=1)
+    table_7b['Unset'] = table_7b.apply(lambda x: str(int(x['Unset'])), axis=1)
+    table_7b['Pass'] = table_7b.apply(lambda x: str(int(x['Pass'])), axis=1)
+    table_7b['Observed'] = table_7b.apply(lambda x: str(int(x['Observed'])), axis=1)
+    table_7b['NOTE'] = None
+    table_7b['sbNote'] = table_7b.sbNote.str.replace('\n', ' ')
+    table_7b['sbNote'] = table_7b.apply(
         lambda x: x['sbNote'] +
         ' <strong style="color: #ff0000">PENDING QA0 Status</strong>'
         if int(x['Unset']) > 0 else x['sbNote'], axis=1)
-    table_8b['SB_STATE'] = table_8b.apply(
-        lambda x: color_states(x['SB_STATE']), axis=1)
-    table_8b['isTimeConstrained'] = table_8b.apply(
+    table_7b['SB_STATE'] = table_7b.apply(
+        lambda x: color_states(x['SB_STATE'], x['execount'], x['Unset'], x['Pass']), axis=1)
+    table_7b['isTimeConstrained'] = table_7b.apply(
         lambda x: '%Y%' if x['isTimeConstrained'] == True or
         x['isPolarization'] == True else '', axis=1)
-    table_8b['CODE'] = table_8b.apply(
+    table_7b['CODE'] = table_7b.apply(
         lambda x: '[[https://asa.alma.cl/protrack/?projectUid=' +
         x['OBSPROJECT_UID'] + '][' + x['CODE'] + ']]', axis=1)
-    table_8b['PRJ_STATUS'] = table_8b.apply(
+    table_7b['PRJ_STATUS'] = table_7b.apply(
         lambda x: '!' + x['PRJ_STATUS'], axis=1)
-    table_8b['sbName'] = table_8b.apply(lambda x: '!' + x['sbName'], axis=1)
+    table_7b['sbName'] = table_7b.apply(lambda x: '!' + x['sbName'], axis=1)
 
-    table_8b = table_8b[
-        [u'CODE', u'SG_ID', u'sbName', u'band', u'RA', u'range', u'execount',
-         u'Pass',
-         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS',
-         u'SB_UID',
+    table_7b = table_7b[
+        [u'CODE', u'SG_ID', u'sbName', u'band', u'maxPWVC', u'RA', u'range', u'execount', u'Pass',
+         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS', u'SB_UID',
          u'isTimeConstrained']]
 
-    table_8b.columns = pd.Index(
-        [u'Project Code', u'SG Name', u'SB Name', u'Band', u'RA', u'LST Range',
+    table_7b.columns = pd.Index(
+        [u'Project Code', u'SG Name', u'SB Name', u'Band', u'max. PWV', u'RA', u'LST Range',
          u'Exec. Count', u'Pass Obs.', u'Unset Obs.', u'Total Obs.', u'SB Note',
-         u'SB Status', u'Prj. Status', u'SB UID',
-         u'Critical (See instructions)'],
+         u'SB Status', u'Prj. Status', u'SB UID', u'Critical (See instructions)'],
         dtype='object')
 
-    table_8b.sort('RA', inplace=True)
+    table_7b.sort('RA', inplace=True)
 
-    table_8fin = pd.DataFrame(columns=table_8b.columns)
+    table_7fin = pd.DataFrame(columns=table_7b.columns)
 
-    for r in table_8b.iterrows():
-        table_8fin = table_8fin.append(r[1], ignore_index=True)
+    for r in table_7b.iterrows():
+        table_7fin = table_7fin.append(r[1], ignore_index=True)
         if r[1]['Pass Obs.'] > 0:
             sb_uid = r[1]['SB UID']
             df = datas.aqua_execblock.query(
                 'SB_UID == @sb_uid and QA0STATUS == "Pass"')
             for d in df.iterrows():
-                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
+                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
                          'EB:' + d[1]['EXECBLOCKUID'] +
                          ' [[https://asa.alma.cl/webaqua?ebuid=' +
                          d[1]['EXECBLOCKUID'] + '][(Aqua)]]' + ' LST: ' +
                          d[1]['LST_START'] + '-' + d[1]['LST_END'],
                          'Pass', '', '', '')]
-                row_temp = pd.DataFrame(rarr, columns=table_8b.columns)
-                table_8fin = table_8fin.append(row_temp, ignore_index=True)
+                row_temp = pd.DataFrame(rarr, columns=table_7b.columns)
+                table_7fin = table_7fin.append(row_temp, ignore_index=True)
         if r[1]['Unset Obs.'] > 0:
             sb_uid = r[1]['SB UID']
             df = datas.aqua_execblock.query(
                 'SB_UID == @sb_uid and QA0STATUS == "Unset"')
             for d in df.iterrows():
-                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
+                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
                          'EB:' + d[1]['EXECBLOCKUID'] +
                          ' [[https://asa.alma.cl/webaqua?ebuid=' +
                          d[1]['EXECBLOCKUID'] + '][(Aqua)]]' + ' LST: ' +
                          d[1]['LST_START'] + '-' + d[1]['LST_END'],
                          'Unset', '', '', '')]
-                row_temp = pd.DataFrame(rarr, columns=table_8b.columns)
-                table_8fin = table_8fin.append(row_temp, ignore_index=True)
+                row_temp = pd.DataFrame(rarr, columns=table_7b.columns)
+                table_7fin = table_7fin.append(row_temp, ignore_index=True)
 
-    table_8fin['SB UID'] = table_8fin.apply(
+    table_7fin['SB UID'] = table_7fin.apply(
         lambda x: '[[' + x['SB UID'].replace('uid://', '').replace('/', '_') +
         '][' + x['SB UID'] + ']]' if len(x['SB UID']) > 0 else '^', axis=1)
     f = open('twiki.txt', 'w')
-    s = tabulate(table_8fin.set_index('SB UID'), tablefmt='orgtbl')
+    s = tabulate(table_7fin.set_index('SB UID'), tablefmt='orgtbl')
     f.write(header + s)
     f.close()
 
@@ -341,6 +350,9 @@ if __name__ == '__main__':
     parser.add_option(
         "--conf", type=str, default='c368',
         help="Configuration to check: c368 or c367")
+    parser.add_option(
+        "--noreload", action='store_false', dest='reload', default=True,
+        help="Reload APDM data")
 
     opts, args = parser.parse_args()
     print "Twiki for %s" % opts.conf
@@ -348,7 +360,8 @@ if __name__ == '__main__':
         print("Use either c368 or c367 as input for --conf")
         sys.exit(1)
 
-    datas = Wto.WtoAlgorithm3(path=Wto.home + '/.twiki/')
+    datas = Wto.WtoAlgorithm3(path=Wto.home + '/.twiki/',
+                              refresh_apdm=opts.reload)
     datas.write_ephem_coords()
 
     datas.observable_param(horizon=30)
@@ -358,6 +371,8 @@ if __name__ == '__main__':
         lambda x: get_lst(x['ENDTIME'], ALMA1), axis=1)
 
     if opts.conf == 'c368':
-        print_c368()
+        print_twiki('C36-8')
+    elif opts.conf == 'c367':
+        print_twiki('C36-7')
     else:
-        print_c367()
+        print("Use --conf=c368 or --conf=c367")
