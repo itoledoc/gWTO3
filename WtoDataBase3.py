@@ -105,14 +105,17 @@ class WtoDatabase3(object):
         self._cursor = self._connection.cursor()
 
         self._sql_sbstates = str(
-            "SELECT PRJ_REF as OBSPROJECT_UID, STATUS as SB_STATE,"
-            "ARCHIVE_UID as SB_UID "
-            "FROM ALMA.BMMV_SCHEDBLOCK")
+            "SELECT bs.PRJ_REF as OBSPROJECT_UID, bs.STATUS as SB_STATE,"
+            "SB_ARCHIVE_UID as SB_UID, EXECUTION_COUNT as EXECOUNT, "
+            "sbs.DOMAIN_ENTITY_STATE as SB_STATE2 "
+            "FROM ALMA.MV_SCHEDBLOCK bs, ALMA.SCHED_BLOCK_STATUS sbs "
+            "WHERE bs.SB_ARCHIVE_UID = sbs.DOMAIN_ENTITY_ID")
         self._cursor.execute(self._sql_sbstates)
         self.sb_status = pd.DataFrame(
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
+        self.sb_status['EXECOUNT'] = self.sb_status.EXECOUNT.astype(float)
 
         # self.qa0: QAO flags for observed SBs
         # Query QA0 flags from AQUA tables
@@ -997,6 +1000,7 @@ class WtoDatabase3(object):
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
         ).set_index('SB_UID', drop=False)
+        self.sb_status['EXECOUNT'] = self.sb_status.EXECOUNT.astype(float)
 
     # noinspection PyUnusedLocal
     def _get_ar_lim(self, sbrow):
