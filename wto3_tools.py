@@ -434,11 +434,13 @@ def find_array(value, listconf):
     return array
 
 
-def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1, date=None):
+def calc_ephem_coords(ekind, ephemstring='', sbuid='', alma=ALMA1, date=None):
 
     """
 
 
+    :param date:
+    :param sbuid:
     :param ekind: Ephemeris source name (for external ephemeris), or just
         'Ephemeris', for internal ephemeris file.
     :type ekind: str
@@ -450,7 +452,7 @@ def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1, date=None):
     ":rtype: float [RA in degrees], float [DEC in degrees],
         bool [Success]
     """
-    date_now= ALMA1.date
+    date_now = ALMA1.date
 
     if date:
         ALMA1.date = ephem.Date(date)
@@ -462,7 +464,8 @@ def calc_ephem_coords(ekind, ephemstring='', alma=ALMA1, date=None):
             # print(ephemeris, sourcename)
             ephe = False
         if not ephe:
-            print("Source %s doesn't have ephemeris for current's date" % ekind)
+            print("SB %s, source %s, doesn't have ephemeris for current's date"
+                  % (sbuid, ekind))
             ALMA1.date = date_now
             return 0., 0., False
 
