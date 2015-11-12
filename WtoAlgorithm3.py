@@ -58,14 +58,14 @@ class WtoAlgorithm3(WtoDatabase3):
             self.target_tables.query('isQuery == False'),
             on='SB_UID',
             how='left',
-            suffixes=["_sb", "_fs"]).set_index('SB_UID')
+            suffixes=["_sb", "_fs"]).set_index('SB_UID', drop=False)
 
         results = ephem_sb.apply(
-            lambda x: wtool.calc_ephem_coords(x['solarSystem'], x['ephemeris']),
+            lambda x: wtool.calc_ephem_coords(
+                x['solarSystem'], x['ephemeris'], x['SB_UID']),
             axis=1)
 
         for r in results.iteritems():
-            print r[0]
             self.schedblocks.ix[r[0], 'RA'] = r[1][0]
             self.schedblocks.ix[r[0], 'DEC'] = r[1][1]
 
