@@ -122,10 +122,13 @@ class WtoDatabase3(object):
         self._sqlqa0 = str(
             "SELECT aqua.SCHEDBLOCKUID as SB_UID, aqua.EXECBLOCKUID, "
             "aqua.STARTTIME, aqua.ENDTIME, aqua.QA0STATUS, shift.SE_STATUS, "
-            "shift.SE_PROJECT_CODE, shift.SE_ARRAYENTRY_ID "
-            "FROM ALMA.AQUA_V_EXECBLOCK aqua, ALMA.SHIFTLOG_ENTRIES shift "
+            "shift.SE_PROJECT_CODE, shift.SE_ARRAYENTRY_ID, "
+            "DBMS_LOB.SUBSTR(acom.CCOMMENT) "
+            "FROM ALMA.AQUA_V_EXECBLOCK aqua, ALMA.SHIFTLOG_ENTRIES shift, "
+            "ALMA.AQUA_COMMENT acom "
             "WHERE regexp_like (aqua.OBSPROJECTCODE, '^201[35]\..*\.[AST]') "
-            "AND aqua.EXECBLOCKUID = shift.SE_EB_UID")
+            "AND aqua.EXECBLOCKUID = shift.SE_EB_UID AND "
+            "aqua.FINALCOMMENTID = acom.COMMENTID")
 
         self._cursor.execute(self._sqlqa0)
         self.aqua_execblock = pd.DataFrame(

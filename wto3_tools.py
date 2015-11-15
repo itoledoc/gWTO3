@@ -434,6 +434,7 @@ def find_array(value, listconf):
     return array
 
 
+# noinspection PyUnboundLocalVariable
 def calc_ephem_coords(ekind, ephemstring='', sbuid='', alma=ALMA1, date=None):
 
     """
@@ -452,6 +453,7 @@ def calc_ephem_coords(ekind, ephemstring='', sbuid='', alma=ALMA1, date=None):
     ":rtype: float [RA in degrees], float [DEC in degrees],
         bool [Success]
     """
+
     date_now = ALMA1.date
 
     if date:
@@ -467,33 +469,35 @@ def calc_ephem_coords(ekind, ephemstring='', sbuid='', alma=ALMA1, date=None):
             print("SB %s, source %s, doesn't have ephemeris for current's date"
                   % (sbuid, ekind))
             ALMA1.date = date_now
-            return 0., 0., False
+            return 0., 0., 'Fail'
+        else:
+            ephe = 'OK'
 
     elif ekind in MOON:
         obj = eval('ephem.' + ekind + '()')
         obj.compute(alma)
         ra = np.rad2deg(obj.ra)
         dec = np.rad2deg(obj.dec)
-        ephe = True
+        ephe = 'OK'
 
     elif ekind in ASTEROIDS.keys():
         obj = ephem.readdb(ASTEROIDS[ekind])
         obj.compute(alma)
         ra = np.rad2deg(obj.ra)
         dec = np.rad2deg(obj.dec)
-        ephe = True
+        ephe = 'OK'
 
     elif ekind in SSO:
         obj = eval('ephem.' + ekind + '()')
         obj.compute(alma)
         ra = np.rad2deg(obj.ra)
         dec = np.rad2deg(obj.dec)
-        ephe = True
+        ephe = 'OK'
 
     else:
         # print("What??")
         ALMA1.date = date_now
-        return 0., 0., False
+        return 0., 0., 'CheckSB(ephem)'
 
     # noinspection PyUnboundLocalVariable
     ALMA1.date = date_now
@@ -550,5 +554,4 @@ def read_ephemeris(ephemeris, date):
                 ra = ephem.hours(ra_temp.replace(' ', ':'))
                 dec = ephem.degrees(dec_temp.replace(' ', ':'))
                 ephe = True
-                # print(ra, dec, ephe, now)
                 return pd.np.degrees(ra), pd.np.degrees(dec), ephe

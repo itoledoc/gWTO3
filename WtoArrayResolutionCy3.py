@@ -37,8 +37,8 @@ class ArrayRes:
 
     def __init__(self, path):
                       
-        self.res = [3.4, 1.8, 1.2, 0.7, 0.5, 0.3, 0.1, 0.075]
-        self.las = [25.3, 25.2, 25.2, 9.6, 7.8, 4.8, 1.5, 1.1]           
+        self.res = [3.4, 1.8, 1.2, 0.7, 0.5, 0.27, 0.12, 0.076]
+        self.las = [25.3, 25.2, 25.2, 9.6, 7.8, 4.8, 1.5, 1.1]
             
         self.frequencyReference = 100.
         self.freqObs = 0.
@@ -140,10 +140,10 @@ class ArrayRes:
     # noinspection PyUnboundLocalVariable
     def run(self, ar, las, declination, use_aca, no_of_12, ot_bestconf, uid):
 
-        if ot_bestconf == "C36-7":
-            return [self.res[6] * 0.8, 0], [self.res[6] * 1.2, 0], 'C36-7', ''
-        if ot_bestconf == "C36-8":
-            return [self.res[7] * 0.8, 0], [self.res[7] * 1.2, 0], 'C36-8', ''
+        # if ot_bestconf == "C36-7":
+        #     return [self.res[6] * 0.8, 0], [self.res[6] * 1.2, 0], 'C36-7', ''
+        # if ot_bestconf == "C36-8":
+        #     return [self.res[7] * 0.8, 0], [self.res[7] * 1.2, 0], 'C36-8', ''
 
         if declination >= 43:
             declination = 40.

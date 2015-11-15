@@ -52,110 +52,119 @@ def color_states(state, execount, qunset, qpass):
 # noinspection PyUnusedLocal
 def print_twiki(conf):
 
-    c367 = datas.schedblocks.query(
+    sched_conf = datas.schedblocks.query(
         'BestConf == @conf')[
         ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA',
          'execount', 'OBSPROJECT_UID', 'isPolarization', 'maxPWVC']]
 
-    c367_s = pd.merge(c367, datas.sb_status[['SB_UID', 'SB_STATE']],
-                      on='SB_UID', how='left')
-    c367_ss = pd.merge(
+    sched_conf_s = pd.merge(
+        sched_conf, datas.sb_status[['SB_UID', 'SB_STATE']],
+        on='SB_UID', how='left')
+    sched_conf_ss = pd.merge(
         datas.sciencegoals[['OBSPROJECT_UID', 'OUS_ID', 'isTimeConstrained']],
-        c367_s, on=['OBSPROJECT_UID', 'OUS_ID'])
-    c367_ssp = pd.merge(
+        sched_conf_s, on=['OBSPROJECT_UID', 'OUS_ID'])
+    sched_conf_ssp = pd.merge(
         pd.merge(
             datas.projects[['OBSPROJECT_UID', 'CODE', 'PRJ_STATUS', 'CYCLE',
                             'DC_LETTER_GRADE']],
             datas.obsproject[['OBSPROJECT_UID', 'NOTE']], on='OBSPROJECT_UID'),
-        c367_ss, on='OBSPROJECT_UID', how='right')
+        sched_conf_ss, on='OBSPROJECT_UID', how='right')
 
-    table_7 = c367_ssp.query(
+    table = sched_conf_ssp.query(
         'CYCLE != "2013.A" and DC_LETTER_GRADE != "C"').sort('RA')[
-        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'maxPWVC', 'RA', 'execount', 'sbNote',
-         'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained', 'isPolarization',
-         'OBSPROJECT_UID']].sort('RA')
-    table_7['RA'] = table_7.apply(
+        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'maxPWVC', 'RA',
+         'execount', 'sbNote', 'SB_STATE', 'PRJ_STATUS', 'NOTE',
+         'isTimeConstrained', 'isPolarization', 'OBSPROJECT_UID']].sort('RA')
+    table['RA'] = table.apply(
         lambda ro1: pd.Timestamp.time(
-            pd.datetime(2015, 1, 1, int(ro1['RA'] / 15.),
-                        int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.)))))
-        , axis=1).astype(str).str.slice(0, 5)
+            pd.datetime(
+                2015, 1, 1, int(ro1['RA'] / 15.),
+                int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.))))),
+        axis=1).astype(str).str.slice(0, 5)
 
-    table_7 = pd.merge(
-        table_7,
+    table = pd.merge(
+        table,
         datas.obs_param[['SB_UID', 'rise', 'set']],
         on='SB_UID', how='left').set_index('SB_UID', drop=False)
-    table_7['rise_lst'] = table_7.apply(
+    table['rise_lst'] = table.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['rise']),
-                        int(60. * (ro1['rise'] - int(ro1['rise'])))))
-        , axis=1)
-    table_7['set_lst'] = table_7.apply(
+                        int(60. * (ro1['rise'] - int(ro1['rise']))))),
+        axis=1)
+    table['set_lst'] = table.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
-                        int(60. * (ro1['set'] - int(ro1['set'])))))
-        , axis=1)
-    table_7['rise_lst'] = table_7.rise_lst.astype(str).str.slice(0, 5)
-    table_7['set_lst'] = table_7.set_lst.astype(str).str.slice(0, 5)
-    table_7['range'] = table_7.rise_lst + '-' + table_7.set_lst
+                        int(60. * (ro1['set'] - int(ro1['set']))))),
+        axis=1)
+    table['rise_lst'] = table.rise_lst.astype(str).str.slice(0, 5)
+    table['set_lst'] = table.set_lst.astype(str).str.slice(0, 5)
+    table['range'] = table.rise_lst + '-' + table.set_lst
 
-    sbs = table_7.index.unique()
+    sbs = table.index.unique()
     qastatus = datas.aqua_execblock.query(
         'SB_UID in @sbs').groupby(
         ['SB_UID', 'QA0STATUS']).QA0STATUS.count().unstack().fillna(0)
 
-    table_7b = pd.merge(
-        table_7, qastatus.reset_index(),
+    table_b = pd.merge(
+        table, qastatus.reset_index(),
         left_index=True, right_on='SB_UID', how='left').fillna(0)
 
     try:
-        table_7b['Observed'] = table_7b.Unset + table_7b.Pass
+        table_b['Observed'] = table_b.Unset + table_b.Pass
     except AttributeError:
         try:
-            table_7b['Observed'] = table_7b.Unset
-            table_7b['Pass'] = 0
+            table_b['Observed'] = table_b.Unset
+            table_b['Pass'] = 0
         except AttributeError:
-            table_7b['Observed'] = 0
-            table_7b['Unset'] = 0
+            table_b['Observed'] = 0
+            table_b['Unset'] = 0
 
-    table_7b['execount'] = table_7b.apply(lambda x: str(int(x['execount'])), axis=1)
-    table_7b['Unset'] = table_7b.apply(lambda x: str(int(x['Unset'])), axis=1)
-    table_7b['Pass'] = table_7b.apply(lambda x: str(int(x['Pass'])), axis=1)
-    table_7b['Observed'] = table_7b.apply(lambda x: str(int(x['Observed'])), axis=1)
-    table_7b['NOTE'] = None
-    table_7b['sbNote'] = table_7b.sbNote.str.replace('\n', ' ')
-    table_7b['sbNote'] = table_7b.apply(
+    table_b['execount'] = table_b.apply(
+        lambda x: str(int(x['execount'])), axis=1)
+    table_b['Unset'] = table_b.apply(
+        lambda x: str(int(x['Unset'])), axis=1)
+    table_b['Pass'] = table_b.apply(
+        lambda x: str(int(x['Pass'])), axis=1)
+    table_b['Observed'] = table_b.apply(
+        lambda x: str(int(x['Observed'])), axis=1)
+    table_b['NOTE'] = None
+    table_b['sbNote'] = table_b.sbNote.str.replace('\n', ' ')
+    table_b['sbNote'] = table_b.apply(
         lambda x: x['sbNote'] +
         ' <strong style="color: #ff0000">PENDING QA0 Status</strong>'
         if int(x['Unset']) > 0 else x['sbNote'], axis=1)
-    table_7b['SB_STATE'] = table_7b.apply(
-        lambda x: color_states(x['SB_STATE'], x['execount'], x['Unset'], x['Pass']), axis=1)
-    table_7b['isTimeConstrained'] = table_7b.apply(
+    table_b['SB_STATE'] = table_b.apply(
+        lambda x: color_states(x['SB_STATE'], x['execount'], x['Unset'],
+                               x['Pass']),
+        axis=1)
+    table_b['isTimeConstrained'] = table_b.apply(
         lambda x: '%Y%' if x['isTimeConstrained'] == True or
         x['isPolarization'] == True else '', axis=1)
-    table_7b['CODE'] = table_7b.apply(
+    table_b['CODE'] = table_b.apply(
         lambda x: '[[https://asa.alma.cl/protrack/?projectUid=' +
         x['OBSPROJECT_UID'] + '][' + x['CODE'] + ']]', axis=1)
-    table_7b['PRJ_STATUS'] = table_7b.apply(
+    table_b['PRJ_STATUS'] = table_b.apply(
         lambda x: '!' + x['PRJ_STATUS'], axis=1)
-    table_7b['sbName'] = table_7b.apply(lambda x: '!' + x['sbName'], axis=1)
+    table_b['sbName'] = table_b.apply(lambda x: '!' + x['sbName'], axis=1)
 
-    table_7b = table_7b[
-        [u'CODE', u'SG_ID', u'sbName', u'band', u'maxPWVC', u'RA', u'range', u'execount', u'Pass',
-         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS', u'SB_UID',
-         u'isTimeConstrained']]
+    table_b = table_b[
+        [u'CODE', u'SG_ID', u'sbName', u'band', u'maxPWVC', u'RA', u'range',
+         u'execount', u'Pass', u'Unset', u'Observed', u'sbNote', u'SB_STATE',
+         u'PRJ_STATUS', u'SB_UID', u'isTimeConstrained']]
 
-    table_7b.columns = pd.Index(
-        [u'Project Code', u'SG Name', u'SB Name', u'Band', u'max. PWV', u'RA', u'LST Range',
-         u'Exec. Count', u'Pass Obs.', u'Unset Obs.', u'Total Obs.', u'SB Note',
-         u'SB Status', u'Prj. Status', u'SB UID', u'Critical (See instructions)'],
+    table_b.columns = pd.Index(
+        [u'Project Code', u'SG Name', u'SB Name', u'Band', u'max. PWV', u'RA',
+         u'LST Range', u'Exec. Count', u'Pass Obs.', u'Unset Obs.',
+         u'Total Obs.', u'SB Note', u'SB Status', u'Prj. Status', u'SB UID',
+         u'Critical (See instructions)'],
         dtype='object')
 
-    table_7b.sort('RA', inplace=True)
+    table_b.sort('RA', inplace=True)
 
-    table_7fin = pd.DataFrame(columns=table_7b.columns)
+    table_fin = pd.DataFrame(columns=table_b.columns)
 
-    for r in table_7b.iterrows():
-        table_7fin = table_7fin.append(r[1], ignore_index=True)
+    for r in table_b.iterrows():
+        table_fin = table_fin.append(r[1], ignore_index=True)
         if r[1]['Pass Obs.'] > 0:
             sb_uid = r[1]['SB UID']
             df = datas.aqua_execblock.query(
@@ -167,8 +176,8 @@ def print_twiki(conf):
                          d[1]['EXECBLOCKUID'] + '][(Aqua)]]' + ' LST: ' +
                          d[1]['LST_START'] + '-' + d[1]['LST_END'],
                          'Pass', '', '', '')]
-                row_temp = pd.DataFrame(rarr, columns=table_7b.columns)
-                table_7fin = table_7fin.append(row_temp, ignore_index=True)
+                row_temp = pd.DataFrame(rarr, columns=table_b.columns)
+                table_fin = table_fin.append(row_temp, ignore_index=True)
         if r[1]['Unset Obs.'] > 0:
             sb_uid = r[1]['SB UID']
             df = datas.aqua_execblock.query(
@@ -180,14 +189,14 @@ def print_twiki(conf):
                          d[1]['EXECBLOCKUID'] + '][(Aqua)]]' + ' LST: ' +
                          d[1]['LST_START'] + '-' + d[1]['LST_END'],
                          'Unset', '', '', '')]
-                row_temp = pd.DataFrame(rarr, columns=table_7b.columns)
-                table_7fin = table_7fin.append(row_temp, ignore_index=True)
+                row_temp = pd.DataFrame(rarr, columns=table_b.columns)
+                table_fin = table_fin.append(row_temp, ignore_index=True)
 
-    table_7fin['SB UID'] = table_7fin.apply(
+    table_fin['SB UID'] = table_fin.apply(
         lambda x: '[[' + x['SB UID'].replace('uid://', '').replace('/', '_') +
         '][' + x['SB UID'] + ']]' if len(x['SB UID']) > 0 else '^', axis=1)
     f = open('twiki.txt', 'w')
-    s = tabulate(table_7fin.set_index('SB UID'), tablefmt='orgtbl')
+    s = tabulate(table_fin.set_index('SB UID'), tablefmt='orgtbl')
     f.write(header + s)
     f.close()
 

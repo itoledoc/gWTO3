@@ -163,6 +163,7 @@ def av_arrays(sel, minlst=-2., maxlst=2.):
                     use_ra_b9, use_ra_b10]
 
 
+# noinspection PyUnusedLocal
 def do_pre_plots(ra, used, tot_t, filename, title, lab=False, xleg='', yleg='',
                  ymax=None):
     py.close()
@@ -245,17 +246,18 @@ def plots_remaining(conf):
     table_8['rise_lst'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['rise']),
-                        int(60. * (ro1['rise'] - int(ro1['rise'])))))
-        , axis=1)
+                        int(60. * (ro1['rise'] - int(ro1['rise']))))),
+        axis=1)
     table_8['set_lst'] = table_8.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
-                        int(60. * (ro1['set'] - int(ro1['set'])))))
-        , axis=1)
+                        int(60. * (ro1['set'] - int(ro1['set']))))),
+        axis=1)
     table_8['rise_lst'] = table_8.rise_lst.astype(str).str.slice(0, 5)
     table_8['set_lst'] = table_8.set_lst.astype(str).str.slice(0, 5)
     table_8['range'] = table_8.rise_lst + '-' + table_8.set_lst
 
+    # noinspection PyUnusedLocal
     sbs = table_8.index.unique()
     qastatus = datas.aqua_execblock.query(
         'SB_UID in @sbs').groupby(
