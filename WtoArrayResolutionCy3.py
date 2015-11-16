@@ -37,7 +37,7 @@ class ArrayRes:
 
     def __init__(self, path):
                       
-        self.res = [3.4, 1.8, 1.2, 0.7, 0.5, 0.27, 0.12, 0.076]
+        self.res = [3.4, 1.8, 1.2, 0.7, 0.5, 0.27, 0.1, 0.075]
         self.las = [25.3, 25.2, 25.2, 9.6, 7.8, 4.8, 1.5, 1.1]
             
         self.frequencyReference = 100.
@@ -90,7 +90,8 @@ class ArrayRes:
         f.close()
 
     # noinspection PyUnusedLocal
-    def find_array(self, ar, las, declination, use_aca, no_of_12, uid):
+    def find_array(self, ar, las, declination, use_aca, no_of_12, uid,
+                   c368=False):
     
         n_data = len(self.data[0][0])
         dec_min = self.data[0][0][0]
@@ -114,11 +115,17 @@ class ArrayRes:
             # print ar,  ar /2., resarr, ar * 1.1
             spatialresolutionarr = resarr * scaling_frequency
 
-            if (ar * 1.1 > spatialresolutionarr >= ar / 2.) and (no_of_12 == 2):
+            if (ar * 1. >= spatialresolutionarr >= ar / 2.) and (no_of_12 == 2):
+                match.append(arr)
+                notfound = False
+
+            if ((ar * 1.3 >= spatialresolutionarr >= ar / 2.) and
+                    (no_of_12 == 1)) and c368:
                 match.append(arr)
                 notfound = False
             
-            if (ar * 1.1 > spatialresolutionarr >= ar / 2.) and (no_of_12 == 1):
+            if ((ar * 1.1 >= spatialresolutionarr >= ar / 2.) and
+                    (no_of_12 == 1)):
                 # if use_aca == 0:
                 #     if self.las[arr] * 2. > las:
                 #         match.append(arr)
@@ -144,6 +151,9 @@ class ArrayRes:
         #     return [self.res[6] * 0.8, 0], [self.res[6] * 1.2, 0], 'C36-7', ''
         # if ot_bestconf == "C36-8":
         #     return [self.res[7] * 0.8, 0], [self.res[7] * 1.2, 0], 'C36-8', ''
+        c368 = False
+        if ot_bestconf == "C36-8":
+            c368 = True
 
         if declination >= 43:
             declination = 40.
@@ -160,7 +170,7 @@ class ArrayRes:
         while notfound and ntry < maxtry:
             ntry += 1
             matcharr, notfound = self.find_array(
-                ar, las, declination, use_aca, no_of_12, uid)
+                ar, las, declination, use_aca, no_of_12, uid, c368=c368)
             fudgefactor += deltafudgefactor
             ar *= fudgefactor
     

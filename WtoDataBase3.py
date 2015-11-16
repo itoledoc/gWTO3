@@ -108,8 +108,11 @@ class WtoDatabase3(object):
             "SELECT bs.PRJ_REF as OBSPROJECT_UID, bs.STATUS as SB_STATE,"
             "SB_ARCHIVE_UID as SB_UID, EXECUTION_COUNT as EXECOUNT, "
             "sbs.DOMAIN_ENTITY_STATE as SB_STATE2 "
-            "FROM ALMA.MV_SCHEDBLOCK bs, ALMA.SCHED_BLOCK_STATUS sbs "
-            "WHERE bs.SB_ARCHIVE_UID = sbs.DOMAIN_ENTITY_ID")
+            "FROM ALMA.MV_SCHEDBLOCK bs, ALMA.SCHED_BLOCK_STATUS sbs,"
+            "ALMA.BMMV_OBSPROJECT obs "
+            "WHERE bs.SB_ARCHIVE_UID = sbs.DOMAIN_ENTITY_ID "
+            "AND obs.PRJ_ARCHIVE_UID = bs.PRJ_REF "
+            "AND regexp_like (obs.PRJ_CODE, '^201[35]\..*\.[AST]')")
         self._cursor.execute(self._sql_sbstates)
         self.sb_status = pd.DataFrame(
             self._cursor.fetchall(),
@@ -123,20 +126,38 @@ class WtoDatabase3(object):
             "SELECT aqua.SCHEDBLOCKUID as SB_UID, aqua.EXECBLOCKUID, "
             "aqua.STARTTIME, aqua.ENDTIME, aqua.QA0STATUS, shift.SE_STATUS, "
             "shift.SE_PROJECT_CODE, shift.SE_ARRAYENTRY_ID, "
-            "DBMS_LOB.SUBSTR(acom.CCOMMENT) "
-            "FROM ALMA.AQUA_V_EXECBLOCK aqua, ALMA.SHIFTLOG_ENTRIES shift, "
-            "ALMA.AQUA_COMMENT acom "
+            "aqua.FINALCOMMENTID "
+            "FROM ALMA.AQUA_V_EXECBLOCK aqua, ALMA.SHIFTLOG_ENTRIES shift "
             "WHERE regexp_like (aqua.OBSPROJECTCODE, '^201[35]\..*\.[AST]') "
-            "AND aqua.EXECBLOCKUID = shift.SE_EB_UID AND "
-            "aqua.FINALCOMMENTID = acom.COMMENTID")
+            "AND aqua.EXECBLOCKUID = shift.SE_EB_UID")
+
+        self._sqlqa0com = str(
+            "SELECT aqua.FINALCOMMENTID, "
+            "DBMS_LOB.SUBSTR(acom.CCOMMENT) as COMENT "
+            "FROM ALMA.AQUA_V_EXECBLOCK aqua, ALMA.AQUA_COMMENT acom "
+            "WHERE regexp_like (aqua.OBSPROJECTCODE, '^201[35]\..*\.[AST]') "
+            "AND aqua.FINALCOMMENTID = acom.COMMENTID"
+        )
 
         self._cursor.execute(self._sqlqa0)
         self.aqua_execblock = pd.DataFrame(
             self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description])
+
+        self._cursor.execute(self._sqlqa0com)
+        self.execblock_comm = pd.DataFrame(
+            self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
-        ).set_index('SB_UID', drop=False)
-        self.aqua_execblock['delta'] = self.aqua_execblock.ENDTIME - \
-            self.aqua_execblock.STARTTIME
+        ).set_index('FINALCOMMENTID', drop=False)
+
+        # self.aqdeb = self.aqua_execblock.copy()
+
+        self.aqua_execblock = pd.merge(
+            self.aqua_execblock, self.execblock_comm, on='FINALCOMMENTID',
+            how='left').set_index('SB_UID', drop=False)
+
+        self.aqua_execblock['delta'] = (self.aqua_execblock.ENDTIME -
+                                        self.aqua_execblock.STARTTIME)
         self.aqua_execblock['delta'] = self.aqua_execblock.apply(
             lambda x: x['delta'].total_seconds() / 3600., axis=1
         )
@@ -249,9 +270,10 @@ class WtoDatabase3(object):
         self._load_sciencegoals()
         self._load_sblocks_meta()
         self._load_schedblocks()
-        self.add_imaging_param()
+        self._add_imaging_param()
+        self._create_extrainfo()
 
-    def add_imaging_param(self):
+    def _add_imaging_param(self):
 
         self._schedblocks_temp['assumedconf_ar_ot'] = (
             self._schedblocks_temp.minAR_ot / 0.9) * \
@@ -267,7 +289,7 @@ class WtoDatabase3(object):
             [self._schedblocks_temp, ar], axis=1).set_index(
             'SB_UID', drop=False)
 
-    def create_extrainfo(self):
+    def _create_extrainfo(self):
 
         target_tables_temp = pd.merge(
             self.orderedtar.query('name != "Calibrators"'),
@@ -655,7 +677,7 @@ class WtoDatabase3(object):
         self.spectralwindow[toi] = self.spectralwindow[toi].astype(int)
         self.spectralwindow[tob] = self.spectralwindow[tob].astype(bool)
 
-    def update_apdm(self, obsproject_uid):
+    def _update_apdm(self, obsproject_uid):
 
         proj_xmlfile = get_apdm(self._cursor, self._data_path, obsproject_uid)
         proj = [self._read_obsproject(
@@ -673,7 +695,8 @@ class WtoDatabase3(object):
         self._update_sciencegoal(obsproject_uid)
         self._update_sblock_meta(obsproject_uid)
         self._update_schedblock(obsproject_uid)
-        self.add_imaging_param()
+        self._add_imaging_param()
+        self._create_extrainfo()
 
     def _update_sciencegoal(self, obsproject_uid):
 
@@ -990,10 +1013,20 @@ class WtoDatabase3(object):
         self._cursor.execute(self._sqlqa0)
         self.aqua_execblock = pd.DataFrame(
             self._cursor.fetchall(),
+            columns=[rec[0] for rec in self._cursor.description])
+
+        self._cursor.execute(self._sqlqa0com)
+        self.execblock_comm = pd.DataFrame(
+            self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
-        ).set_index('SB_UID', drop=False)
-        self.aqua_execblock['delta'] = self.aqua_execblock.ENDTIME - \
-            self.aqua_execblock.STARTTIME
+        ).set_index('FINALCOMMENTID', drop=False)
+
+        self.aqua_execblock = pd.merge(
+            self.aqua_execblock, self.execblock_comm, on='FINALCOMMENTID',
+            how='left').set_index('SB_UID', drop=False)
+
+        self.aqua_execblock['delta'] = (self.aqua_execblock.ENDTIME -
+                                        self.aqua_execblock.STARTTIME)
         self.aqua_execblock['delta'] = self.aqua_execblock.apply(
             lambda x: x['delta'].total_seconds() / 3600., axis=1
         )
