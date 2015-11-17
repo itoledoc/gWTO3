@@ -21,7 +21,14 @@ header = str(
     'the link is already created, and you should add comments there. '
     'The project code links with the project tracker. *The LST Range columns'
     ' gives the rising and setting times in LST hours, for a minimum '
-    'altitude of 30 degrees*\n\n%TABLE{tablerules="rows"}%\n| *SB UID / '
+    'altitude of 30 degrees*\n\nAlso, *and just for the use of the !AoD*, there '
+    'is a link that shows what it currently observable, given that it is over '
+    '20 degrees, within -4 and 4 HA, and executable in C36-7:\n\n'
+    '[[http://10.200.113.78/views/Observable/Dashboard1?:embed=y&:'
+    'showShareOptions=true&:display_count=no][What is up?]]\n\nThe user is '
+    '\'aod\' and the password is the same that the !AoD uses when logging into '
+    'red-osf or osf-red. Please, only one user should be logged with that '
+    'account at the time.\n\n%TABLE{tablerules="rows"}%\n| *SB UID / '
     'Link to comments (scheduling, problems)*  | *Project Code* | '
     '*SG Name*  | *SB Name*  | *Band*  | *Max. PWV* | *RA*  | *LST Range* |  '
     '*Exec. Count* |  *Pass Obs.* |  *Unset Obs.* |  *Total Obs.* | '
@@ -53,13 +60,12 @@ def color_states(state, execount, qunset, qpass):
 def print_twiki(conf):
 
     sched_conf = datas.schedblocks.query(
-        'BestConf == @conf')[
-        ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA',
-         'execount', 'OBSPROJECT_UID', 'isPolarization', 'maxPWVC']]
+        'BestConf in ["C36-8", "C36-7"]')[
+        ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA', 'execount',
+         'OBSPROJECT_UID', 'isPolarization', 'maxPWVC']]
 
-    sched_conf_s = pd.merge(
-        sched_conf, datas.sb_status[['SB_UID', 'SB_STATE']],
-        on='SB_UID', how='left')
+    sched_conf_s = pd.merge(sched_conf, datas.sb_status[['SB_UID', 'SB_STATE']],
+                            on='SB_UID', how='left')
     sched_conf_ss = pd.merge(
         datas.sciencegoals[['OBSPROJECT_UID', 'OUS_ID', 'isTimeConstrained']],
         sched_conf_s, on=['OBSPROJECT_UID', 'OUS_ID'])
@@ -72,30 +78,29 @@ def print_twiki(conf):
 
     table = sched_conf_ssp.query(
         'CYCLE != "2013.A" and DC_LETTER_GRADE != "C"').sort('RA')[
-        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'maxPWVC', 'RA',
-         'execount', 'sbNote', 'SB_STATE', 'PRJ_STATUS', 'NOTE',
-         'isTimeConstrained', 'isPolarization', 'OBSPROJECT_UID']].sort('RA')
+        ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'maxPWVC', 'RA', 'execount', 'sbNote',
+         'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained', 'isPolarization',
+         'OBSPROJECT_UID']].sort('RA')
     table['RA'] = table.apply(
         lambda ro1: pd.Timestamp.time(
-            pd.datetime(
-                2015, 1, 1, int(ro1['RA'] / 15.),
-                int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.))))),
-        axis=1).astype(str).str.slice(0, 5)
+            pd.datetime(2015, 1, 1, int(ro1['RA'] / 15.),
+                        int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.)))))
+        , axis=1).astype(str).str.slice(0, 5)
 
     table = pd.merge(
         table,
-        datas.obs_param[['SB_UID', 'rise', 'set']],
-        on='SB_UID', how='left').set_index('SB_UID', drop=False)
+        datas.obs_param.query('C36_7 == @conf')[['SB_UID', 'rise', 'set']],
+        on='SB_UID', how='inner').set_index('SB_UID', drop=False)
     table['rise_lst'] = table.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['rise']),
-                        int(60. * (ro1['rise'] - int(ro1['rise']))))),
-        axis=1)
+                        int(60. * (ro1['rise'] - int(ro1['rise'])))))
+        , axis=1)
     table['set_lst'] = table.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
-                        int(60. * (ro1['set'] - int(ro1['set']))))),
-        axis=1)
+                        int(60. * (ro1['set'] - int(ro1['set'])))))
+        , axis=1)
     table['rise_lst'] = table.rise_lst.astype(str).str.slice(0, 5)
     table['set_lst'] = table.set_lst.astype(str).str.slice(0, 5)
     table['range'] = table.rise_lst + '-' + table.set_lst
@@ -109,24 +114,11 @@ def print_twiki(conf):
         table, qastatus.reset_index(),
         left_index=True, right_on='SB_UID', how='left').fillna(0)
 
-    try:
-        table_b['Observed'] = table_b.Unset + table_b.Pass
-    except AttributeError:
-        try:
-            table_b['Observed'] = table_b.Unset
-            table_b['Pass'] = 0
-        except AttributeError:
-            table_b['Observed'] = 0
-            table_b['Unset'] = 0
-
-    table_b['execount'] = table_b.apply(
-        lambda x: str(int(x['execount'])), axis=1)
-    table_b['Unset'] = table_b.apply(
-        lambda x: str(int(x['Unset'])), axis=1)
-    table_b['Pass'] = table_b.apply(
-        lambda x: str(int(x['Pass'])), axis=1)
-    table_b['Observed'] = table_b.apply(
-        lambda x: str(int(x['Observed'])), axis=1)
+    table_b['Observed'] = table_b.Unset + table_b.Pass
+    table_b['execount'] = table_b.apply(lambda x: str(int(x['execount'])), axis=1)
+    table_b['Unset'] = table_b.apply(lambda x: str(int(x['Unset'])), axis=1)
+    table_b['Pass'] = table_b.apply(lambda x: str(int(x['Pass'])), axis=1)
+    table_b['Observed'] = table_b.apply(lambda x: str(int(x['Observed'])), axis=1)
     table_b['NOTE'] = None
     table_b['sbNote'] = table_b.sbNote.str.replace('\n', ' ')
     table_b['sbNote'] = table_b.apply(
@@ -134,9 +126,7 @@ def print_twiki(conf):
         ' <strong style="color: #ff0000">PENDING QA0 Status</strong>'
         if int(x['Unset']) > 0 else x['sbNote'], axis=1)
     table_b['SB_STATE'] = table_b.apply(
-        lambda x: color_states(x['SB_STATE'], x['execount'], x['Unset'],
-                               x['Pass']),
-        axis=1)
+        lambda x: color_states(x['SB_STATE'], x['execount'], x['Unset'], x['Pass']), axis=1)
     table_b['isTimeConstrained'] = table_b.apply(
         lambda x: '%Y%' if x['isTimeConstrained'] == True or
         x['isPolarization'] == True else '', axis=1)
@@ -148,15 +138,14 @@ def print_twiki(conf):
     table_b['sbName'] = table_b.apply(lambda x: '!' + x['sbName'], axis=1)
 
     table_b = table_b[
-        [u'CODE', u'SG_ID', u'sbName', u'band', u'maxPWVC', u'RA', u'range',
-         u'execount', u'Pass', u'Unset', u'Observed', u'sbNote', u'SB_STATE',
-         u'PRJ_STATUS', u'SB_UID', u'isTimeConstrained']]
+        [u'CODE', u'SG_ID', u'sbName', u'band', u'maxPWVC', u'RA', u'range', u'execount', u'Pass',
+         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS', u'SB_UID',
+         u'isTimeConstrained']]
 
     table_b.columns = pd.Index(
-        [u'Project Code', u'SG Name', u'SB Name', u'Band', u'max. PWV', u'RA',
-         u'LST Range', u'Exec. Count', u'Pass Obs.', u'Unset Obs.',
-         u'Total Obs.', u'SB Note', u'SB Status', u'Prj. Status', u'SB UID',
-         u'Critical (See instructions)'],
+        [u'Project Code', u'SG Name', u'SB Name', u'Band', u'max. PWV', u'RA', u'LST Range',
+         u'Exec. Count', u'Pass Obs.', u'Unset Obs.', u'Total Obs.', u'SB Note',
+         u'SB Status', u'Prj. Status', u'SB UID', u'Critical (See instructions)'],
         dtype='object')
 
     table_b.sort('RA', inplace=True)
@@ -205,7 +194,7 @@ if __name__ == '__main__':
 
     parser = OptionParser()
     parser.add_option(
-        "--conf", type=str, default='c368',
+        "--conf", type=str, default='c367',
         help="Configuration to check: c368 or c367")
     parser.add_option(
         "--noreload", action='store_false', dest='reload', default=True,
