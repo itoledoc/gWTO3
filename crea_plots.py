@@ -176,9 +176,9 @@ def do_pre_plots(ra, used, tot_t, filename, title, lab=False, xleg='', yleg='',
     # py.bar(ra, used[0] + used[1] + used[2] + used[3] + used[4],
     #        width=1.66666667e-02, ec='#e0f3f8', fc='#e0f3f8', label='Band 8')
     py.bar(ra, used[0] + used[1] + used[2] + used[3],
-           width=1.66666667e-02, ec='#ffffbf', fc='#ffffbf', label='Band 7')
+           width=1.66666667e-02, ec='#4575b4', fc='#4575b4', label='Band 7')
     py.bar(ra, used[0] + used[1] + used[2],
-           width=1.66666667e-02, ec='#fee090', fc='#fee090', label='Band 6')
+           width=1.66666667e-02, ec='#91bfdb', fc='#91bfdb', label='Band 6')
     py.bar(ra, used[0] + used[1],
            width=1.66666667e-02, ec='#fc8d59', fc='#fc8d59', label='Band 4')
     py.bar(ra, used[0],
@@ -209,7 +209,7 @@ def get_lst(datestr, observer):
 datas = Wto.WtoAlgorithm3()
 datas.write_ephem_coords()
 
-datas.unmut_param(horizon=30)
+datas.static_param(horizon=30)
 datas.aqua_execblock['LST_START'] = datas.aqua_execblock.apply(
     lambda x: get_lst(x['STARTTIME'], ALMA1), axis=1)
 datas.aqua_execblock['LST_END'] = datas.aqua_execblock.apply(
@@ -219,7 +219,7 @@ datas.aqua_execblock['LST_END'] = datas.aqua_execblock.apply(
 def plots_remaining(conf):
 
     c368 = datas.schedblocks.query(
-        'BestConf == @conf')[
+        'OT_BestConf == @conf')[
         ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA',
          'execount', 'OBSPROJECT_UID', 'isPolarization', 'estimatedTime']]
 
@@ -266,6 +266,19 @@ def plots_remaining(conf):
     table_8b = pd.merge(
         table_8, qastatus.reset_index(),
         left_index=True, right_on='SB_UID', how='left').fillna(0)
+
+    t8 = table_8b.query('SB_STATE != "FullyOb"').copy()
+
+    t8['estimatedTime_SB'] = t8.estimatedTime
+    t8['estimatedTime_SB'] = t8.apply(
+        lambda x: 0 if x['estimatedTime_SB'] < 0 else x['estimatedTime_SB'],
+        axis=1)
+    rab, usedb = av_arrays(t8, minlst=-3., maxlst=3.)
+    ymax = do_pre_plots(
+        rab, usedb, 0, '%s_all.png' % conf,
+        '%s original pressure' % conf, lab=True,
+        yleg='Time Needed [hours]', xleg='LST [h]')
+
     t8 = table_8b.query('SB_STATE != "FullyObserved"').copy()
 
     t8['estimatedTime_SB'] = (t8.estimatedTime / t8.execount) * (
@@ -274,10 +287,10 @@ def plots_remaining(conf):
         lambda x: 0 if x['estimatedTime_SB'] < 0 else x['estimatedTime_SB'],
         axis=1)
     rab, usedb = av_arrays(t8, minlst=-3., maxlst=3.)
-    ymax = do_pre_plots(
+    do_pre_plots(
         rab, usedb, 0, '%s_pass.png' % conf,
         '%s Remaining Pressure (only with QA0 Pass)' % conf, lab=True,
-        yleg='Time Needed [hours]', xleg='LST [h]')
+        yleg='Time Needed [hours]', xleg='LST [h]', ymax=ymax)
 
     t8['estimatedTime_SB'] = (t8.estimatedTime / t8.execount) * (
         t8.execount - t8.Pass - t8.Unset)

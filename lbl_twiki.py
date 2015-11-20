@@ -211,7 +211,7 @@ if __name__ == '__main__':
                               refresh_apdm=opts.reload)
     datas.write_ephem_coords()
 
-    datas.unmut_param(horizon=30)
+    datas.static_param(horizon=30)
     datas.aqua_execblock['LST_START'] = datas.aqua_execblock.apply(
         lambda x: get_lst(x['STARTTIME'], ALMA1), axis=1)
     datas.aqua_execblock['LST_END'] = datas.aqua_execblock.apply(

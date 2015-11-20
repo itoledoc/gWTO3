@@ -75,13 +75,13 @@ CONF_LIM = {
 }
 
 CONFRES = {
-    'C36-1': 3.4,
+    'C36-1': 3.35,
     'C36-2': 1.8,
-    'C36-3': 1.2,
+    'C36-3': 1.22,
     'C36-4': 0.7,
-    'C36-5': 0.5,
+    'C36-5': 0.49,
     'C36-6': 0.27,
-    'C36-7': 0.2,
+    'C36-7': 0.12,
     'C36-8': 0.075}
 
 CYC_NA = {'2013.A': 34,
@@ -103,8 +103,8 @@ class WtoAlgorithm3(WtoDatabase3):
        .update_archive
        .crea_extrainfo
        .write_ephem
-       .unmut_param
-       .aggregate_dfs
+       .static_param
+       ._aggregate_dfs
        .selector
        .scorere
 
@@ -140,9 +140,9 @@ class WtoAlgorithm3(WtoDatabase3):
         self._availableobs = False
         self._time_astropy = TIME
         self._ALMA_ephem = ALMA1
-        self._unmut = False
+        self._static_param = False
 
-    def aggregate_dfs(self):
+    def _aggregate_dfs(self):
 
         self.master_wto_df = pd.merge(
             self.projects.query('phase == "II"')[
@@ -207,6 +207,12 @@ class WtoAlgorithm3(WtoDatabase3):
         self._time_astropy.location = ALMA
         self._ALMA_ephem.date = ephem.now()
 
+    def set_time(self, time_str):
+        self._time_astropy = Time(time_str)
+        self._time_astropy.delta_ut1_utc = 0
+        self._time_astropy.location = ALMA
+        self._ALMA_ephem.date = ephem.now(self._time_astropy.iso)
+
     def write_ephem_coords(self):
 
         """
@@ -233,9 +239,9 @@ class WtoAlgorithm3(WtoDatabase3):
             self.schedblocks.ix[r[0], 'DEC'] = r[1][1]
             self.schedblocks.ix[r[0], 'ephem'] = r[1][2]
 
-    def unmut_param(self, horizon=20):
+    def static_param(self, horizon=20):
 
-        if self._unmut:
+        if self._static_param:
             idx = self.target_tables.query(
                 'solarSystem != "Unspecified" and isQuery == False and '
                 'RA == 0').SB_UID.unique()
@@ -255,14 +261,15 @@ class WtoAlgorithm3(WtoDatabase3):
                 axis=1
             )
 
-        self._unmut = True
+        self._static_param = True
 
     def update_apdm(self, obsproject_uid):
 
         self._update_apdm(obsproject_uid)
-        self._unmut = True
+        self._static_param = True
 
-    def selector(self, array_kind='TWELVE-M',
+    def selector(self,
+                 array_kind='TWELVE-M',
                  prj_status=("Ready", "InProgress"),
                  sb_status=("Ready", "Suspended", "Running", "CalibratorCheck",
                             "Waiting"),
@@ -270,25 +277,26 @@ class WtoAlgorithm3(WtoDatabase3):
                  letterg=("A", "B", "C"),
                  bands=("ALMA_RB_03", "ALMA_RB_04", "ALMA_RB_06", "ALMA_RB_07",
                         "ALMA_RB_08", "ALMA_RB_09", "ALMA_RB_10"),
-                 conf=None, numant=None, arrayar=None, ruv=None, horizon=20.,
-                 minha=-3., maxha=3., site=ALMA, time=None, pwv=0,
-                 check_count=True, mintrans=None):
+                 check_count=True,
+                 conf=None,
+                 calc_blratio=False,
+                 numant=None,
+                 array_id=None,
+                 horizon=20.,
+                 minha=-3.,
+                 maxha=3.,
+                 pwv=0.,
+                 mintrans=None):
 
-        if time:
-            time = Time(time, format='isot', scale='utc')
-            time.delta_ut1_utc = 0
-            time.location = ALMA
-            self._ALMA_ephem.date = ephem.Date(time.iso)
-        else:
-            time = self._time_astropy
-        print time
+        print self._time_astropy
 
-        self.aggregate_dfs()
+        self._aggregate_dfs()
         self.selection_df = self.master_wto_df[['SB_UID']].copy()
         # select array kind
 
         self.selection_df['selArray'] = (
             self.master_wto_df['array'] == array_kind)
+
         self.selection_df['selPrjState'] = (
             self.master_wto_df.apply(
                 lambda x: True if x['PRJ_STATUS'] in prj_status else False,
@@ -297,9 +305,8 @@ class WtoAlgorithm3(WtoDatabase3):
             self.master_wto_df.apply(
                 lambda x: True if x['SB_STATE'] in sb_status else False,
                 axis=1))
-        self.selection_df['selCount'] = True
 
-        self.selection_df['selPrj'] = (
+        self.selection_df['selGrade'] = (
             self.master_wto_df.apply(
                 lambda x: True if
                 x['CYCLE'] in cycle and x['DC_LETTER_GRADE'] in letterg else
@@ -313,11 +320,20 @@ class WtoAlgorithm3(WtoDatabase3):
             )
         )
 
+        self.selection_df['selCount'] = True
+
         if check_count:
             self.selection_df['selCount'] = (
                 self.master_wto_df.EXECOUNT > self.master_wto_df.Observed)
 
         self.selection_df['selConf'] = True
+
+        # Array Selection
+
+        self.master_wto_df['blmax'] = self.master_wto_df.apply(
+            lambda row: rUV.computeBL(row['minAR'] / 0.8, 100.), axis=1)
+        self.master_wto_df['blmin'] = self.master_wto_df.apply(
+            lambda row: rUV.computeBL(row['LAScor'], 100., las=True), axis=1)
 
         if conf:
             qstring = ''
@@ -334,23 +350,60 @@ class WtoAlgorithm3(WtoDatabase3):
                 axis=1
             )
 
+            self.master_wto_df['bl_ratio'] = 1.
+            if calc_blratio:
+                array_id = self.bl_arrays.iloc[0, 3]
+                array_ar, num_bl, num_ant, ruv = self._get_bl_prop(array_id)
+                self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
+                    self.master_wto_df.apply(
+                        lambda x: self._get_cond_bl_prop(
+                            ruv, x['blmin'] * 0.9, x['blmax'] * 1.1), axis=1)
+                )
+                self.master_wto_df['bl_ratio'] = self.master_wto_df.apply(
+                    lambda x: calc_bl_ratio(
+                        x['array'], x['CYCLE'], x['num_bl_use'],
+                        self.selection_df.ix[x.name, 'selConf']),
+                    axis=1
+                )
+
+        else:
+            ar, numbl, numant, ruv = self._get_bl_prop(array_id)
+            self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
+                self.master_wto_df.apply(
+                    lambda x: self._get_cond_bl_prop(
+                        ruv, x['blmin'] * 0.9, x['blmax'] * 1.1), axis=1)
+            )
+
+            self.selection_df['selConf'] = self.master_wto_df.apply(
+                lambda x: True if (x['array_ar_cond'] > x['minAR']) and
+                                  (x['array_ar_cond'] < x['maxAR']) else
+                False, axis=1
+            )
+
+            self.master_wto_df['bl_ratio'] = self.master_wto_df.apply(
+                lambda x: calc_bl_ratio(
+                    x['array'], x['CYCLE'], x['num_bl_use'],
+                    self.selection_df.ix[x.name, 'selConf']),
+                axis=1
+            )
+
         # select observable: elev, ha, moon & sun distance
 
         try:
             c = SkyCoord(
                 ra=self.master_wto_df.RA*u.degree,
                 dec=self.master_wto_df.DEC*u.degree,
-                location=site, obstime=time)
+                location=ALMA, obstime=self._time_astropy)
         except IndexError:
             print("Nothing to observe? %s" % len(self.master_wto_df))
             self._availableobs = False
             return
 
-        ha = time.sidereal_time('apparent') - c.ra
+        ha = self._time_astropy.sidereal_time('apparent') - c.ra
         self.master_wto_df['HA'] = ha.wrap_at(180*u.degree).value
         self.master_wto_df['RAh'] = c.ra.hour
         self.master_wto_df['elev'] = c.transform_to(
-            AltAz(obstime=time, location=site)).alt.value
+            AltAz(obstime=self._time_astropy, location=ALMA)).alt.value
         corr_el = ((self.master_wto_df.ephem != 'N/A') &
                    (self.master_wto_df.ephem != 'OK'))
         self.master_wto_df.ix[corr_el, 'elev'] = -90.
@@ -363,6 +416,8 @@ class WtoAlgorithm3(WtoDatabase3):
             (self.master_wto_df.HA >= minha) &
             (self.master_wto_df.HA <= maxha)
         )
+
+        # Sel Conditions
 
         ind1 = pd.np.around(self.master_wto_df.repfreq, decimals=1)
         ind2 = self.master_wto_df.apply(
@@ -398,22 +453,8 @@ class WtoAlgorithm3(WtoDatabase3):
                 lambda x: calc_tsys(x['band'], x['tsky'], x['tau'],
                                     x['airmass']), axis=1))
 
-        self.master_wto_df['tsysfrac'] = (
+        self.master_wto_df['tsys_ratio'] = (
             self.master_wto_df.tsys / self.master_wto_df.tsys_org)**2
-
-        self.master_wto_df['blmax'] = self.master_wto_df.apply(
-            lambda row: rUV.computeBL(row['ARcor'], 100.), axis=1)
-        self.master_wto_df['blmin'] = self.master_wto_df.apply(
-            lambda row: rUV.computeBL(row['LAScor'], 100.), axis=1)
-
-        # self.master_wto_df['blfrac'] = self.master_wto_df.apply(
-        #     lambda x: calc_blfrac(
-        #         x['array'], x['CYCLE'], x['blmin'], x['blmax'], ruv,
-        #         self.selection_df.ix[x.name, 'selConf']),
-        #     axis=1
-        # )
-
-        # select transmission
 
         # calculate frac
 
@@ -429,15 +470,24 @@ class WtoAlgorithm3(WtoDatabase3):
             "and se.SE_LOCATION='OSF-AOS' and se.SE_CORRELATORTYPE = 'BL'")
         try:
             self._cursor.execute(a)
-            self.bl_arrays = pd.DataFrame(
+            self._bl_arrays_info = pd.DataFrame(
                 self._cursor.fetchall(),
                 columns=[rec[0] for rec in self._cursor.description]
-            ).sort('TS1', ascending=False)
+            ).sort_values(by='TS1', ascending=False)
         except ValueError:
-            self._bl_arrays = pd.DataFrame(
+            self._bl_arrays_info = pd.DataFrame(
                 columns=pd.Index(
                     [u'TS1', u'AV1', u'SE_ARRAYNAME', u'SE1'], dtype='object'))
             print("No BL arrays have been created in the last 6 hours.")
+
+        self._group_bl_arrays = self._bl_arrays_info[
+            self._bl_arrays_info.AV1.str.startswith('CM') == False].copy()
+
+        self.bl_arrays = self._group_bl_arrays.groupby(
+            'TS1').aggregate(
+            {'SE_ARRAYNAME': max, 'SE1': max,
+             'AV1': pd.np.count_nonzero}).query(
+            'AV1 > 32').reset_index().sort_values(by='TS1', ascending=False)
 
         # get latest pad info
 
@@ -455,7 +505,7 @@ class WtoAlgorithm3(WtoDatabase3):
             self._shifts = pd.DataFrame(
                 self._cursor.fetchall(),
                 columns=[rec[0] for rec in self._cursor.description]
-            ).sort('TS1', ascending=False)
+            ).sort_values(by='TS1', ascending=False)
         except ValueError:
             self._shifts = pd.DataFrame(
                 columns=pd.Index(
@@ -477,9 +527,9 @@ class WtoAlgorithm3(WtoDatabase3):
         """
         # In case a bl_array is selected
         if array_name not in CONF_LIM['minbase'].keys():
-            id1 = self.bl_arrays.query(
+            id1 = self._bl_arrays_info.query(
                 'SE_ARRAYNAME == "%s"' % array_name).iloc[0].SE1
-            ap = self.bl_arrays.query(
+            ap = self._bl_arrays_info.query(
                 'SE_ARRAYNAME == "%s" and SE1 == %d' % (array_name, id1)
             )[['AV1']]
 
@@ -510,14 +560,27 @@ class WtoAlgorithm3(WtoDatabase3):
 
         return array_ar, num_bl, num_ant, ruv
 
+    @staticmethod
+    def _get_cond_bl_prop(ruv, blmin, blmax):
 
-def calc_blfrac(arrayk, cycle, minbl, maxbl, ruv, selconf):
+        ruv = ruv[(ruv >= blmin) & (ruv <= blmax)]
+        if len(ruv) < 300.:
+            return pd.Series(
+                [pd.np.NaN, 0],
+                index=['array_ar_cond', 'num_bl_use'])
+        num_bl = len(ruv)
+        array_ar = rUV.compute_array_ar(ruv)
+
+        return pd.Series([array_ar, num_bl],
+                         index=['array_ar_cond', 'num_bl_use'])
+
+
+def calc_bl_ratio(arrayk, cycle, numbl, selconf):
 
     if arrayk == "TWELVE-M" and selconf:
         bl_or = CYC_NA[cycle] * (CYC_NA[cycle] - 1.) / 2.
-        use_ruv = ruv[(ruv >= minbl) & (ruv <= maxbl)]
         try:
-            bl_frac = bl_or / len(use_ruv)
+            bl_frac = bl_or / numbl
         except ZeroDivisionError:
             bl_frac = pd.np.Inf
         return bl_frac

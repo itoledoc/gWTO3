@@ -40,17 +40,22 @@ def computeRuv(fileCasa):
     return (Ruv)
 
 
-def computeBL(AR, freq):
+def computeBL(AR, freq, las=False):
     """
     compute the BL in meter for a resolution AR (applying a Briggs correction
     """
+
     try:
         BLmax = 61800 / (freq * AR)
     except ZeroDivisionError:
-        return 0.
+        BLmax = 0.
 
-    if BLmax < 165.6:
+    if BLmax < 165.6 and not las:
         BLmax = 165.6
+
+    if las:
+        if BLmax > 248.3:
+            BLmax = 248.3
 
     return (BLmax)
 

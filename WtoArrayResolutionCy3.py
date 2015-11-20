@@ -37,7 +37,7 @@ class ArrayRes:
 
     def __init__(self, path):
                       
-        self.res = [3.4, 1.8, 1.2, 0.7, 0.5, 0.27, 0.1, 0.075]
+        self.res = [3.35, 1.8, 1.22, 0.7, 0.49, 0.27, 0.12, 0.075]
         self.las = [25.3, 25.2, 25.2, 9.6, 7.8, 4.8, 1.5, 1.1]
             
         self.frequencyReference = 100.
