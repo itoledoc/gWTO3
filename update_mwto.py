@@ -25,6 +25,7 @@ datas._query_array()
 datas.selector(
     cycle=['2015.1', '2015.A'], minha=-4., maxha=4., letterg=['A', 'B'],
     conf=['C36-7'], calc_blratio=True, pwv=pwv)
+datas.master_wto_df['Exec. Frac'] = 1 / (datas.master_wto_df.bl_ratio * datas.master_wto_df.tsys_ratio)
 datas.master_wto_df.to_sql(
     'master_wto', engine, index_label='SBUID', if_exists='replace', schema='wto')
 datas.selection_df['PWV now'] = pwv
