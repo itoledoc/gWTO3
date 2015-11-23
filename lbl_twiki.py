@@ -32,7 +32,8 @@ header = str(
     'time.\n\n%TABLE{tablerules="rows"}%\n| *SB UID / '
     'Link to comments (scheduling, problems)*  | *Project Code* | '
     '*SG Name*  | *SB Name*  | *Band*  | *Max. PWV* | *RA*  | *LST Range* |  '
-    '*Exec. Count* |  *Pass Obs.* |  *Unset Obs.* |  *Total Obs.* | '
+    '*Exec. Count* |  *Pass Obs.* |  *Unset Obs.* | *SemiPass Obs.* |'
+    '  *Total Obs.* | '
     '*SB Note / EB UID (link to Aqua) and LST Range*  | *SB / EB Status*  '
     '| *Prj. Status*  |  *Critical or Pol (See instructions in block wiki)*'
     '  ||\n')
