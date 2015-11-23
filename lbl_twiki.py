@@ -106,28 +106,39 @@ def print_twiki(conf):
     table['set_lst'] = table.set_lst.astype(str).str.slice(0, 5)
     table['range'] = table.rise_lst + '-' + table.set_lst
 
+    h = ephem.Date(ephem.now() - 7.)
+    hs = str(h)[:10].replace('/', '-')
     sbs = table.index.unique()
     qastatus = datas.aqua_execblock.query(
-        'SB_UID in @sbs').groupby(
+        'SB_UID in @sbs').query(
+        'QA0STATUS in ["Unset", "Pass"] or ('
+        'QA0STATUS == "SemiPass" and STARTTIME > @hs)').groupby(
         ['SB_UID', 'QA0STATUS']).QA0STATUS.count().unstack().fillna(0)
 
     table_b = pd.merge(
         table, qastatus.reset_index(),
         left_index=True, right_on='SB_UID', how='left').fillna(0)
 
-    table_b['Observed'] = table_b.Unset + table_b.Pass
+    try:
+        table_b['Observed'] = table_b.Unset + table_b.Pass + table_b.SemiPass
+    except:
+        table_b['Observed'] = table_b.Unset + table_b.Pass
+        table_b['SemiPass'] = 0
+
     table_b['execount'] = table_b.apply(lambda x: str(int(x['execount'])), axis=1)
     table_b['Unset'] = table_b.apply(lambda x: str(int(x['Unset'])), axis=1)
     table_b['Pass'] = table_b.apply(lambda x: str(int(x['Pass'])), axis=1)
+    table_b['SemiPass'] = table_b.apply(lambda x: str(int(x['SemiPass'])), axis=1)
     table_b['Observed'] = table_b.apply(lambda x: str(int(x['Observed'])), axis=1)
     table_b['NOTE'] = None
     table_b['sbNote'] = table_b.sbNote.str.replace('\n', ' ')
     table_b['sbNote'] = table_b.apply(
         lambda x: x['sbNote'] +
         ' <strong style="color: #ff0000">PENDING QA0 Status</strong>'
-        if int(x['Unset']) > 0 else x['sbNote'], axis=1)
+        if int(x['Unset']) + int(x['SemiPass']) > 0 else x['sbNote'], axis=1)
     table_b['SB_STATE'] = table_b.apply(
-        lambda x: color_states(x['SB_STATE'], x['execount'], x['Unset'], x['Pass']), axis=1)
+        lambda x: color_states(x['SB_STATE'], x['execount'], x['Unset'],
+                               x['Pass']), axis=1)
     table_b['isTimeConstrained'] = table_b.apply(
         lambda x: '%Y%' if x['isTimeConstrained'] == True or
         x['isPolarization'] == True else '', axis=1)
@@ -140,12 +151,12 @@ def print_twiki(conf):
 
     table_b = table_b[
         [u'CODE', u'SG_ID', u'sbName', u'band', u'maxPWVC', u'RA', u'range', u'execount', u'Pass',
-         u'Unset', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS', u'SB_UID',
+         u'Unset', u'SemiPass', u'Observed', u'sbNote', u'SB_STATE', u'PRJ_STATUS', u'SB_UID',
          u'isTimeConstrained']]
 
     table_b.columns = pd.Index(
         [u'Project Code', u'SG Name', u'SB Name', u'Band', u'max. PWV', u'RA', u'LST Range',
-         u'Exec. Count', u'Pass Obs.', u'Unset Obs.', u'Total Obs.', u'SB Note',
+         u'Exec. Count', u'Pass Obs.', u'Unset Obs.', u'SemiPass Obs.', u'Total Obs.', u'SB Note',
          u'SB Status', u'Prj. Status', u'SB UID', u'Critical (See instructions)'],
         dtype='object')
 
@@ -160,7 +171,7 @@ def print_twiki(conf):
             df = datas.aqua_execblock.query(
                 'SB_UID == @sb_uid and QA0STATUS == "Pass"')
             for d in df.iterrows():
-                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
+                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
                          'EB:' + d[1]['EXECBLOCKUID'] +
                          ' [[https://asa.alma.cl/webaqua?ebuid=' +
                          d[1]['EXECBLOCKUID'] + '][(Aqua)]]' + ' LST: ' +
@@ -173,12 +184,26 @@ def print_twiki(conf):
             df = datas.aqua_execblock.query(
                 'SB_UID == @sb_uid and QA0STATUS == "Unset"')
             for d in df.iterrows():
-                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
+                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
                          'EB:' + d[1]['EXECBLOCKUID'] +
                          ' [[https://asa.alma.cl/webaqua?ebuid=' +
                          d[1]['EXECBLOCKUID'] + '][(Aqua)]]' + ' LST: ' +
                          d[1]['LST_START'] + '-' + d[1]['LST_END'],
                          'Unset', '', '', '')]
+                row_temp = pd.DataFrame(rarr, columns=table_b.columns)
+                table_fin = table_fin.append(row_temp, ignore_index=True)
+        if r[1]['SemiPass Obs.'] > 0:
+            sb_uid = r[1]['SB UID']
+            df = datas.aqua_execblock.query(
+                'SB_UID == @sb_uid and (QA0STATUS == "SemiPass" and '
+                'STARTTIME > @hs)')
+            for d in df.iterrows():
+                rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
+                         'EB:' + d[1]['EXECBLOCKUID'] +
+                         ' [[https://asa.alma.cl/webaqua?ebuid=' +
+                         d[1]['EXECBLOCKUID'] + '][(Aqua)]]' + ' LST: ' +
+                         d[1]['LST_START'] + '-' + d[1]['LST_END'],
+                         '!SemiPass', '', '', '')]
                 row_temp = pd.DataFrame(rarr, columns=table_b.columns)
                 table_fin = table_fin.append(row_temp, ignore_index=True)
 

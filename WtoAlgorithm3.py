@@ -140,10 +140,13 @@ class WtoAlgorithm3(WtoDatabase3):
         self._availableobs = False
         self._time_astropy = TIME
         self._ALMA_ephem = ALMA1
-        self._static_param = False
+        self._static_calculated = False
 
     def _aggregate_dfs(self):
 
+        """
+
+        """
         self.master_wto_df = pd.merge(
             self.projects.query('phase == "II"')[
                 ['OBSPROJECT_UID', 'CYCLE', 'CODE', 'DC_LETTER_GRADE',
@@ -164,7 +167,9 @@ class WtoAlgorithm3(WtoDatabase3):
             self.schedblocks[
                 ['SB_UID', 'sbName', 'array', 'repfreq', 'band', 'RA', 'DEC',
                  'maxPWVC', 'minAR', 'maxAR', 'OT_BestConf', 'BestConf',
-                 'two_12m', 'estimatedTime', 'isPolarization', 'ephem']],
+                 'two_12m', 'estimatedTime', 'isPolarization', 'ephem',
+                 'airmass_ot', 'transmission_ot', 'tau_ot', 'tsky_ot',
+                 'tsys_ot']],
             on=['SB_UID'], how='left')
 
         self.master_wto_df = pd.merge(
@@ -172,6 +177,7 @@ class WtoAlgorithm3(WtoDatabase3):
             self.sb_status[['SB_UID', 'SB_STATE', 'EXECOUNT']],
             on=['SB_UID'], how='left')
 
+        # noinspection PyUnusedLocal
         sbs_uid_s = self.master_wto_df.SB_UID.unique()
 
         qastatus = self.aqua_execblock.query(
@@ -202,12 +208,19 @@ class WtoAlgorithm3(WtoDatabase3):
             on=['SB_UID'], how='left')
 
     def set_time_now(self):
+        """
+
+        """
         self._time_astropy = Time.now()
         self._time_astropy.delta_ut1_utc = 0
         self._time_astropy.location = ALMA
         self._ALMA_ephem.date = ephem.now()
 
     def set_time(self, time_str):
+        """
+
+        :param time_str:
+        """
         self._time_astropy = Time(time_str)
         self._time_astropy.delta_ut1_utc = 0
         self._time_astropy.location = ALMA
@@ -241,7 +254,11 @@ class WtoAlgorithm3(WtoDatabase3):
 
     def static_param(self, horizon=20):
 
-        if self._static_param:
+        """
+
+        :param horizon:
+        """
+        if self._static_calculated:
             idx = self.target_tables.query(
                 'solarSystem != "Unspecified" and isQuery == False and '
                 'RA == 0').SB_UID.unique()
@@ -261,12 +278,34 @@ class WtoAlgorithm3(WtoDatabase3):
                 axis=1
             )
 
-        self._static_param = True
+            ind1 = pd.np.around(self.schedblocks.repfreq, decimals=1)
+            ind2 = self.schedblocks.apply(
+                lambda x: str(
+                    int(x['maxPWVC'] / 0.05) * 0.05 +
+                    (0.05 if (x['maxPWVC'] % 0.05) > 0.02 else 0.)),
+                axis=1)
+
+            self.schedblocks['transmission_ot'] = self.pwvdata.lookup(
+                ind1, ind2)
+            self.schedblocks['tau_ot'] = self.tau.lookup(ind1, ind2)
+            self.schedblocks['tsky_ot'] = self.tsky.lookup(ind1, ind2)
+            self.schedblocks['airmass_ot'] = self.schedblocks.apply(
+                lambda x: calc_airmass(x['DEC'], transit=True), axis=1)
+            self.schedblocks['tsys_ot'] = (
+                self.schedblocks.apply(
+                    lambda x: calc_tsys(x['band'], x['tsky_ot'], x['tau_ot'],
+                                        x['airmass_ot']), axis=1))
+
+        self._static_calculated = True
 
     def update_apdm(self, obsproject_uid):
 
+        """
+
+        :param obsproject_uid:
+        """
         self._update_apdm(obsproject_uid)
-        self._static_param = True
+        self._static_calculated = False
 
     def selector(self,
                  array_kind='TWELVE-M',
@@ -288,6 +327,26 @@ class WtoAlgorithm3(WtoDatabase3):
                  pwv=0.,
                  mintrans=None):
 
+        """
+
+        :param array_kind:
+        :param prj_status:
+        :param sb_status:
+        :param cycle:
+        :param letterg:
+        :param bands:
+        :param check_count:
+        :param conf:
+        :param calc_blratio:
+        :param numant:
+        :param array_id:
+        :param horizon:
+        :param minha:
+        :param maxha:
+        :param pwv:
+        :param mintrans:
+        :return:
+        """
         print self._time_astropy
 
         self._aggregate_dfs()
@@ -420,21 +479,9 @@ class WtoAlgorithm3(WtoDatabase3):
         # Sel Conditions
 
         ind1 = pd.np.around(self.master_wto_df.repfreq, decimals=1)
-        ind2 = self.master_wto_df.apply(
-            lambda x: str(
-                int(x['maxPWVC'] / 0.05) * 0.05 +
-                (0.05 if (x['maxPWVC'] % 0.05) > 0.02 else 0.)),
-            axis=1)
 
         pwv_str = (str(int(pwv / 0.05) * 0.05 +
                    (0.05 if (pwv % 0.05) > 0.02 else 0.)))
-
-        self.master_wto_df['transmission_org'] = self.pwvdata.lookup(
-            ind1, ind2)
-        self.master_wto_df['tau_org'] = self.tau.lookup(ind1, ind2)
-        self.master_wto_df['tsky_org'] = self.tsky.lookup(ind1, ind2)
-        self.master_wto_df['airmass_org'] = self.master_wto_df.apply(
-            lambda x: calc_airmass(x['DEC'], transit=True), axis=1)
 
         self.master_wto_df['transmission'] = self.pwvdata.ix[
             ind1, pwv_str].values
@@ -442,25 +489,21 @@ class WtoAlgorithm3(WtoDatabase3):
         self.master_wto_df['tsky'] = self.tsky.ix[ind1, pwv_str].values
         self.master_wto_df['airmass'] = self.master_wto_df.apply(
             lambda x: calc_airmass(x['elev'], transit=False), axis=1)
-
-        self.master_wto_df['tsys_org'] = (
-            self.master_wto_df.apply(
-                lambda x: calc_tsys(x['band'], x['tsky_org'], x['tau_org'],
-                                    x['airmass_org']), axis=1))
-
         self.master_wto_df['tsys'] = (
             self.master_wto_df.apply(
                 lambda x: calc_tsys(x['band'], x['tsky'], x['tau'],
                                     x['airmass']), axis=1))
-
         self.master_wto_df['tsys_ratio'] = (
-            self.master_wto_df.tsys / self.master_wto_df.tsys_org)**2
+            self.master_wto_df.tsys / self.master_wto_df.tsys_ot)**2
 
         # calculate frac
 
         # select frac
 
     def _query_array(self):
+        """
+
+        """
         a = str(
             "select se.SE_TIMESTAMP ts1, sa.SLOG_ATTR_VALUE av1, "
             "se.SE_ARRAYNAME, se.SE_ID se1 from ALMA.SHIFTLOG_ENTRIES se, "
@@ -523,6 +566,7 @@ class WtoAlgorithm3(WtoDatabase3):
 
         """
 
+        :return:
         :param array_name:
         """
         # In case a bl_array is selected
@@ -563,6 +607,13 @@ class WtoAlgorithm3(WtoDatabase3):
     @staticmethod
     def _get_sbbased_bl_prop(ruv, blmin, blmax):
 
+        """
+
+        :param ruv:
+        :param blmin:
+        :param blmax:
+        :return:
+        """
         ruv = ruv[(ruv >= blmin) & (ruv <= blmax)]
         if len(ruv) < 300.:
             return pd.Series(
@@ -577,6 +628,14 @@ class WtoAlgorithm3(WtoDatabase3):
 
 def calc_bl_ratio(arrayk, cycle, numbl, selconf):
 
+    """
+
+    :param arrayk:
+    :param cycle:
+    :param numbl:
+    :param selconf:
+    :return:
+    """
     if arrayk == "TWELVE-M" and selconf:
         bl_or = CYC_NA[cycle] * (CYC_NA[cycle] - 1.) / 2.
         try:
@@ -590,6 +649,14 @@ def calc_bl_ratio(arrayk, cycle, numbl, selconf):
 
 def calc_tsys(band, tsky, tau, airmass):
 
+    """
+
+    :param band:
+    :param tsky:
+    :param tau:
+    :param airmass:
+    :return:
+    """
     if airmass:
 
         g = RECEIVER['g'][band]
@@ -609,7 +676,14 @@ def calc_tsys(band, tsky, tau, airmass):
     return tsys
 
 
+# noinspection PyTypeChecker
 def calc_airmass(dec_el, transit=True):
+    """
+
+    :param dec_el:
+    :param transit:
+    :return:
+    """
     if transit:
         airmass = 1 / pd.np.cos(pd.np.radians(-23.0262015 - dec_el))
     else:
