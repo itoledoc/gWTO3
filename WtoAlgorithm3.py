@@ -356,7 +356,7 @@ class WtoAlgorithm3(WtoDatabase3):
                 array_ar, num_bl, num_ant, ruv = self._get_bl_prop(array_id)
                 self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
                     self.master_wto_df.apply(
-                        lambda x: self._get_cond_bl_prop(
+                        lambda x: self._get_sbbased_bl_prop(
                             ruv, x['blmin'] * 0.9, x['blmax'] * 1.1), axis=1)
                 )
                 self.master_wto_df['bl_ratio'] = self.master_wto_df.apply(
@@ -370,7 +370,7 @@ class WtoAlgorithm3(WtoDatabase3):
             ar, numbl, numant, ruv = self._get_bl_prop(array_id)
             self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
                 self.master_wto_df.apply(
-                    lambda x: self._get_cond_bl_prop(
+                    lambda x: self._get_sbbased_bl_prop(
                         ruv, x['blmin'] * 0.9, x['blmax'] * 1.1), axis=1)
             )
 
@@ -561,7 +561,7 @@ class WtoAlgorithm3(WtoDatabase3):
         return array_ar, num_bl, num_ant, ruv
 
     @staticmethod
-    def _get_cond_bl_prop(ruv, blmin, blmax):
+    def _get_sbbased_bl_prop(ruv, blmin, blmax):
 
         ruv = ruv[(ruv >= blmin) & (ruv <= blmax)]
         if len(ruv) < 300.:
