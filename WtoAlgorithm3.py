@@ -205,6 +205,7 @@ class WtoAlgorithm3(WtoDatabase3):
         self.master_wto_df.Unset.fillna(0, inplace=True)
         self.master_wto_df.Pass.fillna(0, inplace=True)
         self.master_wto_df.Observed.fillna(0, inplace=True)
+        self.master_wto_df.SemiPass.fillna(0, inplace=True)
 
         self.master_wto_df = pd.merge(
             self.master_wto_df,
