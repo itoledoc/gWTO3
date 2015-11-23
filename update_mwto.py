@@ -31,8 +31,13 @@ datas.master_wto_df['Exec. Frac'] = (
 datas.master_wto_df.to_sql(
     'master_wto', engine, index_label='SBUID',
     if_exists='replace', schema='wto')
+
 datas.selection_df['PWV now'] = pwv
+datas.selection_df['PWV now date'] = (
+    pd.read_sql('pwv_data', engine).date.values[0] + ' ' +
+    pd.read_sql('pwv_data', engine).time.values[0])
 datas.selection_df['date'] = str(datas._ALMA_ephem.date)
+datas.master_wto_df['arrayname'] = datas.bl_arrays.iloc[0, 3]
 datas.selection_df.to_sql(
     'selector', engine, index_label='SBUID', if_exists='replace', schema='wto')
 datas._cursor.close()
