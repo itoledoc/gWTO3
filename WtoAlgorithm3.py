@@ -179,22 +179,28 @@ class WtoAlgorithm3(WtoDatabase3):
 
         # noinspection PyUnusedLocal
         sbs_uid_s = self.master_wto_df.SB_UID.unique()
-
+        h = ephem.Date(ephem.now() - 7.)
+        # noinspection PyUnusedLocal
+        hs = str(h)[:10].replace('/', '-')
         qastatus = self.aqua_execblock.query(
-            'SB_UID in @sbs_uid_s').groupby(
+            'SB_UID in @sbs_uid_s').query(
+            'QA0STATUS in ["Unset", "Pass"] or '
+            '(QA0STATUS == "SemiPass" and STARTTIME > @hs)').groupby(
             ['SB_UID', 'QA0STATUS']).QA0STATUS.count().unstack().fillna(0)
 
         if 'Pass' not in qastatus.columns.values:
             qastatus['Pass'] = 0
         if 'Unset' not in qastatus.columns.values:
             qastatus['Unset'] = 0
+        if 'SemiPass' not in qastatus.columns.values:
+            qastatus['SemiPass'] = 0
 
         qastatus['Observed'] = qastatus.Unset + qastatus.Pass
 
         self.master_wto_df = pd.merge(
             self.master_wto_df,
             qastatus[
-                ['Unset', 'Pass', 'Observed']],
+                ['Unset', 'Pass', 'Observed', 'SemiPass']],
             left_on='SB_UID', right_index=True, how='left')
         self.master_wto_df.Unset.fillna(0, inplace=True)
         self.master_wto_df.Pass.fillna(0, inplace=True)
