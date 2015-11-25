@@ -129,10 +129,9 @@ class WtoAlgorithm3(WtoDatabase3):
             self._wto_path + 'conf/tskyR.csv', sep=',', header=0).set_index(
                 'freq')
         self.pwvdata = pd.read_pickle(
-            self._wto_path + 'conf/pwvdata.pandas').set_index(
-                'freq')
-        self.pwvdata.index = pd.Float64Index(
-            pd.np.round(self.pwvdata.index.values, decimals=1), name=u'freq')
+            self._wto_path + 'conf/pwvdata2.pandas')  # .set_index('freq')
+        # self.pwvdata.index = pd.Float64Index(
+        #     pd.np.round(self.pwvdata.index.values, decimals=1), name=u'freq')
 
         self._pwv = None
         self._array_res = []
@@ -354,6 +353,8 @@ class WtoAlgorithm3(WtoDatabase3):
         :param mintrans:
         :return:
         """
+        if float(pwv) > 8:
+            pwv = 8.0
         print self._time_astropy
 
         self._aggregate_dfs()
