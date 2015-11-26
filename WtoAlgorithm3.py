@@ -359,20 +359,25 @@ class WtoAlgorithm3(WtoDatabase3):
 
         self._aggregate_dfs()
         self.selection_df = self.master_wto_df[['SB_UID']].copy()
+
         # select array kind
 
         self.selection_df['selArray'] = (
             self.master_wto_df['array'] == array_kind)
 
+        # select valid Prj States
         self.selection_df['selPrjState'] = (
             self.master_wto_df.apply(
                 lambda x: True if x['PRJ_STATUS'] in prj_status else False,
                 axis=1))
+
+        # select valid SB States
         self.selection_df['selSBState'] = (
             self.master_wto_df.apply(
                 lambda x: True if x['SB_STATE'] in sb_status else False,
                 axis=1))
 
+        # select By grades
         self.selection_df['selGrade'] = (
             self.master_wto_df.apply(
                 lambda x: True if
@@ -380,6 +385,7 @@ class WtoAlgorithm3(WtoDatabase3):
                 False, axis=1)
         )
 
+        # select by band
         self.selection_df['selBand'] = (
             self.master_wto_df.apply(
                 lambda x: True if x['band'] in bands else False,
@@ -501,8 +507,13 @@ class WtoAlgorithm3(WtoDatabase3):
             self.master_wto_df.apply(
                 lambda x: calc_tsys(x['band'], x['tsky'], x['tau'],
                                     x['airmass']), axis=1))
-        self.master_wto_df['tsys_ratio'] = (
-            self.master_wto_df.tsys / self.master_wto_df.tsys_ot)**2
+        self.master_wto_df['tsys_ratio'] = self.master_wto_df.apply(
+            lambda x: x['tsys'] / x['tsys_ot'] if x['tsys'] <= 25000. else
+            pd.np.inf, axis=1)
+
+        self.master_wto_df['Exec. Frac'] = self.master_wto_df.apply(
+            lambda x: 1 / (x['bl_ratio'] * x['tsys_ratio']) if
+            (x['bl_ratio'] * x['tsys_ratio']) <= 100. else 0., axis=1)
 
         # calculate frac
 
