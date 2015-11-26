@@ -141,77 +141,7 @@ class WtoAlgorithm3(WtoDatabase3):
         self._ALMA_ephem = ALMA1
         self._static_calculated = False
 
-    def _aggregate_dfs(self):
 
-        """
-
-        """
-        self.master_wto_df = pd.merge(
-            self.projects.query('phase == "II"')[
-                ['OBSPROJECT_UID', 'CYCLE', 'CODE', 'DC_LETTER_GRADE',
-                 'PRJ_SCIENTIFIC_RANK', 'PRJ_STATUS']],
-            self.sciencegoals.query('hasSB == True')[
-                ['OBSPROJECT_UID', 'SG_ID', 'OUS_ID', 'ARcor', 'LAScor',
-                 'isTimeConstrained', 'isCalSpecial', 'isSpectralScan']],
-            on='OBSPROJECT_UID', how='left')
-
-        self.master_wto_df = pd.merge(
-            self.master_wto_df,
-            self.sblocks[
-                ['OBSPROJECT_UID', 'OUS_ID', 'GOUS_ID', 'MOUS_ID', 'SB_UID']],
-            on=['OBSPROJECT_UID', 'OUS_ID'], how='left')
-
-        self.master_wto_df = pd.merge(
-            self.master_wto_df,
-            self.schedblocks[
-                ['SB_UID', 'sbName', 'array', 'repfreq', 'band', 'RA', 'DEC',
-                 'maxPWVC', 'minAR', 'maxAR', 'OT_BestConf', 'BestConf',
-                 'two_12m', 'estimatedTime', 'isPolarization', 'ephem',
-                 'airmass_ot', 'transmission_ot', 'tau_ot', 'tsky_ot',
-                 'tsys_ot']],
-            on=['SB_UID'], how='left')
-
-        self.master_wto_df = pd.merge(
-            self.master_wto_df,
-            self.sb_status[['SB_UID', 'SB_STATE', 'EXECOUNT']],
-            on=['SB_UID'], how='left')
-
-        # noinspection PyUnusedLocal
-        sbs_uid_s = self.master_wto_df.SB_UID.unique()
-        h = ephem.Date(ephem.now() - 7.)
-        # noinspection PyUnusedLocal
-        hs = str(h)[:10].replace('/', '-')
-        qastatus = self.aqua_execblock.query(
-            'SB_UID in @sbs_uid_s').query(
-            'QA0STATUS in ["Unset", "Pass"] or '
-            '(QA0STATUS == "SemiPass" and STARTTIME > @hs)').groupby(
-            ['SB_UID', 'QA0STATUS']).QA0STATUS.count().unstack().fillna(0)
-
-        if 'Pass' not in qastatus.columns.values:
-            qastatus['Pass'] = 0
-        if 'Unset' not in qastatus.columns.values:
-            qastatus['Unset'] = 0
-        if 'SemiPass' not in qastatus.columns.values:
-            qastatus['SemiPass'] = 0
-
-        qastatus['Observed'] = qastatus.Unset + qastatus.Pass
-
-        self.master_wto_df = pd.merge(
-            self.master_wto_df,
-            qastatus[
-                ['Unset', 'Pass', 'Observed', 'SemiPass']],
-            left_on='SB_UID', right_index=True, how='left')
-        self.master_wto_df.Unset.fillna(0, inplace=True)
-        self.master_wto_df.Pass.fillna(0, inplace=True)
-        self.master_wto_df.Observed.fillna(0, inplace=True)
-        self.master_wto_df.SemiPass.fillna(0, inplace=True)
-
-        self.master_wto_df = pd.merge(
-            self.master_wto_df,
-            self.obs_param[
-                ['SB_UID', 'rise', 'set', 'note', 'C36_1', 'C36_2', 'C36_3',
-                 'C36_4', 'C36_5', 'C36_6', 'C36_7', 'C36_8', 'twelve_good']],
-            on=['SB_UID'], how='left')
 
     def set_time_now(self):
         """
@@ -358,6 +288,10 @@ class WtoAlgorithm3(WtoDatabase3):
         print self._time_astropy
 
         self._aggregate_dfs()
+        self.master_wto_df['array'] = self.master_wto_df.apply(
+            lambda x: 'SEVEN-M' if x['array'] == "ACA" else
+            x['array'], axis=1
+        )
         self.selection_df = self.master_wto_df[['SB_UID']].copy()
 
         # select array kind
@@ -393,6 +327,8 @@ class WtoAlgorithm3(WtoDatabase3):
             )
         )
 
+        # select if still some observations are left
+
         self.selection_df['selCount'] = True
 
         if check_count:
@@ -401,37 +337,62 @@ class WtoAlgorithm3(WtoDatabase3):
 
         self.selection_df['selConf'] = True
 
-        # Array Selection
+        # Array Configuraton Selection (12m)
 
-        self.master_wto_df['blmax'] = self.master_wto_df.apply(
-            lambda row: rUV.computeBL(row['minAR'] / 0.8, 100.), axis=1)
-        self.master_wto_df['blmin'] = self.master_wto_df.apply(
-            lambda row: rUV.computeBL(row['LAScor'], 100., las=True), axis=1)
+        if array_kind == "TWELVE-M":
 
-        if conf:
-            qstring = ''
-            l = len(conf) - 1
-            for i, c in enumerate(conf):
-                col = c.replace('-', '_')
-                if i == l:
-                    qstring += '%s == "%s"' % (col, c)
-                else:
-                    qstring += '%s == "%s" or ' % (col, c)
-            sbs_sel = self.master_wto_df.query(qstring).SB_UID.unique()
-            self.selection_df['selConf'] = self.selection_df.apply(
-                lambda x: True if x['SB_UID'] in sbs_sel else False,
-                axis=1
-            )
+            self.master_wto_df['blmax'] = self.master_wto_df.apply(
+                lambda row: rUV.computeBL(row['minAR'] / 0.8, 100.), axis=1)
+            self.master_wto_df['blmin'] = self.master_wto_df.apply(
+                lambda row: rUV.computeBL(row['LAScor'], 100., las=True),
+                axis=1)
 
-            self.master_wto_df['bl_ratio'] = 1.
-            if calc_blratio:
-                array_id = self.bl_arrays.iloc[0, 3]
-                array_ar, num_bl, num_ant, ruv = self._get_bl_prop(array_id)
+            if conf:
+                qstring = ''
+                l = len(conf) - 1
+                for i, c in enumerate(conf):
+                    col = c.replace('-', '_')
+                    if i == l:
+                        qstring += '%s == "%s"' % (col, c)
+                    else:
+                        qstring += '%s == "%s" or ' % (col, c)
+                sbs_sel = self.master_wto_df.query(qstring).SB_UID.unique()
+                self.selection_df['selConf'] = self.selection_df.apply(
+                    lambda x: True if x['SB_UID'] in sbs_sel else False,
+                    axis=1
+                )
+
+                self.master_wto_df['bl_ratio'] = 1.
+                if calc_blratio:
+                    array_id = self.bl_arrays.iloc[0, 3]
+                    array_ar, num_bl, num_ant, ruv = self._get_bl_prop(array_id)
+                    self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
+                        self.master_wto_df.apply(
+                            lambda x: self._get_sbbased_bl_prop(
+                                ruv, x['blmin'] * 0.9, x['blmax'] * 1.1),
+                            axis=1)
+                    )
+                    self.master_wto_df['bl_ratio'] = self.master_wto_df.apply(
+                        lambda x: calc_bl_ratio(
+                            x['array'], x['CYCLE'], x['num_bl_use'],
+                            self.selection_df.ix[x.name, 'selConf']),
+                        axis=1
+                    )
+
+            else:
+                ar, numbl, numant, ruv = self._get_bl_prop(array_id)
                 self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
                     self.master_wto_df.apply(
                         lambda x: self._get_sbbased_bl_prop(
                             ruv, x['blmin'] * 0.9, x['blmax'] * 1.1), axis=1)
                 )
+
+                self.selection_df['selConf'] = self.master_wto_df.apply(
+                    lambda x: True if (x['array_ar_cond'] > x['minAR']) and
+                                      (x['array_ar_cond'] < x['maxAR']) else
+                    False, axis=1
+                )
+
                 self.master_wto_df['bl_ratio'] = self.master_wto_df.apply(
                     lambda x: calc_bl_ratio(
                         x['array'], x['CYCLE'], x['num_bl_use'],
@@ -439,26 +400,38 @@ class WtoAlgorithm3(WtoDatabase3):
                     axis=1
                 )
 
-        else:
-            ar, numbl, numant, ruv = self._get_bl_prop(array_id)
-            self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
-                self.master_wto_df.apply(
-                    lambda x: self._get_sbbased_bl_prop(
-                        ruv, x['blmin'] * 0.9, x['blmax'] * 1.1), axis=1)
-            )
+        # Array Configuration Selection (7m or ACA)
 
+        elif array_kind == "SEVEN-M":
+            if numant is None:
+                numant = 10.
             self.selection_df['selConf'] = self.master_wto_df.apply(
-                lambda x: True if (x['array_ar_cond'] > x['minAR']) and
-                                  (x['array_ar_cond'] < x['maxAR']) else
+                lambda x: True if x['array'] == "SEVEN-M" else
                 False, axis=1
             )
-
+            self.master_wto_df['blmax'] = pd.np.NaN
+            self.master_wto_df['blmin'] = pd.np.NaN
+            self.master_wto_df['array_ar_cond'] = pd.np.NaN
+            self.master_wto_df['num_bl_use'] = pd.np.NaN
             self.master_wto_df['bl_ratio'] = self.master_wto_df.apply(
                 lambda x: calc_bl_ratio(
                     x['array'], x['CYCLE'], x['num_bl_use'],
-                    self.selection_df.ix[x.name, 'selConf']),
+                    self.selection_df.ix[x.name, 'selConf'], numant=numant),
                 axis=1
             )
+
+        else:
+            if numant is None:
+                numant = 10.
+            self.selection_df['selConf'] = self.master_wto_df.apply(
+                lambda x: True if x['array'] == "TP-Array" else
+                False, axis=1
+            )
+            self.master_wto_df['blmax'] = pd.np.NaN
+            self.master_wto_df['blmin'] = pd.np.NaN
+            self.master_wto_df['array_ar_cond'] = pd.np.NaN
+            self.master_wto_df['num_bl_use'] = pd.np.NaN
+            self.master_wto_df['bl_ratio'] = 1.
 
         # select observable: elev, ha, moon & sun distance
 
@@ -515,9 +488,77 @@ class WtoAlgorithm3(WtoDatabase3):
             lambda x: 1 / (x['bl_ratio'] * x['tsys_ratio']) if
             (x['bl_ratio'] * x['tsys_ratio']) <= 100. else 0., axis=1)
 
-        # calculate frac
+    def _aggregate_dfs(self):
 
-        # select frac
+        """
+
+        """
+        self.master_wto_df = pd.merge(
+            self.projects.query('phase == "II"')[
+                ['OBSPROJECT_UID', 'CYCLE', 'CODE', 'DC_LETTER_GRADE',
+                 'PRJ_SCIENTIFIC_RANK', 'PRJ_STATUS']],
+            self.sciencegoals.query('hasSB == True')[
+                ['OBSPROJECT_UID', 'SG_ID', 'OUS_ID', 'ARcor', 'LAScor',
+                 'isTimeConstrained', 'isCalSpecial', 'isSpectralScan']],
+            on='OBSPROJECT_UID', how='left')
+
+        self.master_wto_df = pd.merge(
+            self.master_wto_df,
+            self.sblocks[
+                ['OBSPROJECT_UID', 'OUS_ID', 'GOUS_ID', 'MOUS_ID', 'SB_UID']],
+            on=['OBSPROJECT_UID', 'OUS_ID'], how='left')
+
+        self.master_wto_df = pd.merge(
+            self.master_wto_df,
+            self.schedblocks[
+                ['SB_UID', 'sbName', 'array', 'repfreq', 'band', 'RA', 'DEC',
+                 'maxPWVC', 'minAR', 'maxAR', 'OT_BestConf', 'BestConf',
+                 'two_12m', 'estimatedTime', 'isPolarization', 'ephem',
+                 'airmass_ot', 'transmission_ot', 'tau_ot', 'tsky_ot',
+                 'tsys_ot']],
+            on=['SB_UID'], how='left')
+
+        self.master_wto_df = pd.merge(
+            self.master_wto_df,
+            self.sb_status[['SB_UID', 'SB_STATE', 'EXECOUNT']],
+            on=['SB_UID'], how='left')
+
+        # noinspection PyUnusedLocal
+        sbs_uid_s = self.master_wto_df.SB_UID.unique()
+        h = ephem.Date(ephem.now() - 7.)
+        # noinspection PyUnusedLocal
+        hs = str(h)[:10].replace('/', '-')
+        qastatus = self.aqua_execblock.query(
+            'SB_UID in @sbs_uid_s').query(
+            'QA0STATUS in ["Unset", "Pass"] or '
+            '(QA0STATUS == "SemiPass" and STARTTIME > @hs)').groupby(
+            ['SB_UID', 'QA0STATUS']).QA0STATUS.count().unstack().fillna(0)
+
+        if 'Pass' not in qastatus.columns.values:
+            qastatus['Pass'] = 0
+        if 'Unset' not in qastatus.columns.values:
+            qastatus['Unset'] = 0
+        if 'SemiPass' not in qastatus.columns.values:
+            qastatus['SemiPass'] = 0
+
+        qastatus['Observed'] = qastatus.Unset + qastatus.Pass
+
+        self.master_wto_df = pd.merge(
+            self.master_wto_df,
+            qastatus[
+                ['Unset', 'Pass', 'Observed', 'SemiPass']],
+            left_on='SB_UID', right_index=True, how='left')
+        self.master_wto_df.Unset.fillna(0, inplace=True)
+        self.master_wto_df.Pass.fillna(0, inplace=True)
+        self.master_wto_df.Observed.fillna(0, inplace=True)
+        self.master_wto_df.SemiPass.fillna(0, inplace=True)
+
+        self.master_wto_df = pd.merge(
+            self.master_wto_df,
+            self.obs_param[
+                ['SB_UID', 'rise', 'set', 'note', 'C36_1', 'C36_2', 'C36_3',
+                 'C36_4', 'C36_5', 'C36_6', 'C36_7', 'C36_8', 'twelve_good']],
+            on=['SB_UID'], how='left')
 
     def _query_array(self):
         """
@@ -645,7 +686,7 @@ class WtoAlgorithm3(WtoDatabase3):
                          index=['array_ar_cond', 'num_bl_use'])
 
 
-def calc_bl_ratio(arrayk, cycle, numbl, selconf):
+def calc_bl_ratio(arrayk, cycle, numbl, selconf, numant=None):
 
     """
 
@@ -662,6 +703,10 @@ def calc_bl_ratio(arrayk, cycle, numbl, selconf):
         except ZeroDivisionError:
             bl_frac = pd.np.Inf
         return bl_frac
+    elif arrayk in ["ACA", "SEVEN-M"] and selconf:
+        return 5 * 9. / (numant * (numant - 1) / 2.)
+    elif arrayk in ["TP-Array"] and selconf:
+        return 1.
     else:
         return pd.np.Inf
 
