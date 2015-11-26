@@ -420,6 +420,7 @@ class WtoAlgorithm3(WtoDatabase3):
                 axis=1
             )
 
+        # Array Configuration selection (TP)
         else:
             if numant is None:
                 numant = 10.
@@ -463,7 +464,7 @@ class WtoAlgorithm3(WtoDatabase3):
             (self.master_wto_df.HA <= maxha)
         )
 
-        # Sel Conditions
+        # Sel Conditions, exec. frac
 
         ind1 = pd.np.around(self.master_wto_df.repfreq, decimals=1)
 
