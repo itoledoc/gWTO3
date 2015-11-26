@@ -508,7 +508,7 @@ class WtoAlgorithm3(WtoDatabase3):
                 lambda x: calc_tsys(x['band'], x['tsky'], x['tau'],
                                     x['airmass']), axis=1))
         self.master_wto_df['tsys_ratio'] = self.master_wto_df.apply(
-            lambda x: x['tsys'] / x['tsys_ot'] if x['tsys'] <= 25000. else
+            lambda x: (x['tsys'] / x['tsys_ot'])**2. if x['tsys'] <= 25000. else
             pd.np.inf, axis=1)
 
         self.master_wto_df['Exec. Frac'] = self.master_wto_df.apply(
