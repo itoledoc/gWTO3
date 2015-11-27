@@ -51,8 +51,8 @@ class WtoDatabase3(object):
         """
 
         self._refresh_apdm = refresh_apdm
-        self.allc2 = allc2
-        self.loadp1 = loadp1
+        self._allc2 = allc2
+        self._loadp1 = loadp1
         # Default Paths and Preferences
         self._wto_path = os.environ['WTO']
         if path:
@@ -123,7 +123,7 @@ class WtoDatabase3(object):
             columns=[rec[0] for rec in self._cursor.description])
 
         self._cursor.execute(self._sqlqa0com)
-        self.execblock_comm = pd.DataFrame(
+        self._execblock_comm = pd.DataFrame(
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
         ).set_index('FINALCOMMENTID', drop=False)
@@ -131,7 +131,7 @@ class WtoDatabase3(object):
         # self.aqdeb = self.aqua_execblock.copy()
 
         self.aqua_execblock = pd.merge(
-            self.aqua_execblock, self.execblock_comm, on='FINALCOMMENTID',
+            self.aqua_execblock, self._execblock_comm, on='FINALCOMMENTID',
             how='left').set_index('SB_UID', drop=False)
 
         self.aqua_execblock['delta'] = (self.aqua_execblock.ENDTIME -
@@ -197,29 +197,29 @@ class WtoDatabase3(object):
 
         # Query for Projects, from BMMV.
         self._cursor.execute(self._sql1)
-        self.df1 = pd.DataFrame(
+        self._df1 = pd.DataFrame(
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description])
 
-        if self.allc2:
-            self.df1 = self.df1.query(
+        if self._allc2:
+            self._df1 = self._df1.query(
                 '(CYCLE in ["2015.1", "2015.A"]) or '
                 '(CYCLE in ["2013.1", "2013.A"] and '
                 ' DC_LETTER_GRADE == ["A", "B", "C"])').copy()
         else:
-            self.df1 = self.df1.query(
+            self._df1 = self._df1.query(
                 '(CYCLE in ["2015.1", "2015.A"]) or '
                 '(CYCLE in ["2013.1", "2013.A"] and '
                 'DC_LETTER_GRADE == "A")').copy()
         self.projects = pd.merge(
-            self.df1.query('PRJ_STATUS not in @status'), self.executive,
+            self._df1.query('PRJ_STATUS not in @status'), self.executive,
             on='OBSPROJECT_UID'
         ).set_index('CODE', drop=False)
 
-        # print(len(self.df1.query('PRJ_STATUS not in @status')))
+        # print(len(self._df1.query('PRJ_STATUS not in @status')))
 
         self.projects = pd.merge(
-            self.df1.query('PRJ_STATUS not in @status'), self.executive,
+            self._df1.query('PRJ_STATUS not in @status'), self.executive,
             on='OBSPROJECT_UID'
         ).set_index('CODE', drop=False)
 
@@ -232,7 +232,7 @@ class WtoDatabase3(object):
             axis=1
         )
 
-        if not self.loadp1:
+        if not self._loadp1:
             self.projects = self.projects.query('phase == "II"').copy()
 
         if self._refresh_apdm:
@@ -950,7 +950,7 @@ class WtoDatabase3(object):
     def update_from_archive(self):
 
         self._cursor.execute(self._sql1)
-        self.df1 = pd.DataFrame(
+        self._df1 = pd.DataFrame(
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description])
 
@@ -960,18 +960,18 @@ class WtoDatabase3(object):
 
         # noinspection PyUnusedLocal
         status = self.status
-        if self.allc2:
-            self.df1 = self.df1.query(
+        if self._allc2:
+            self._df1 = self._df1.query(
                 '(CYCLE in ["2015.1", "2015.A"]) or '
                 '(CYCLE in ["2013.1", "2013.A"] and '
                 ' DC_LETTER_GRADE == ["A", "B", "C"])').copy()
         else:
-            self.df1 = self.df1.query(
+            self._df1 = self._df1.query(
                 '(CYCLE in ["2015.1", "2015.A"]) or '
                 '(CYCLE in ["2013.1", "2013.A"] and '
                 'DC_LETTER_GRADE == "A")').copy()
         self.projects = pd.merge(
-            self.df1.query('PRJ_STATUS not in @status'), self.executive,
+            self._df1.query('PRJ_STATUS not in @status'), self.executive,
             on='OBSPROJECT_UID'
         ).set_index('CODE', drop=False)
 
@@ -983,7 +983,7 @@ class WtoDatabase3(object):
             lambda r: 'I' if r['PRJ_STATUS'] in PHASE_I_STATUS else 'II',
             axis=1
         )
-        if not self.loadp1:
+        if not self._loadp1:
             self.projects = self.projects.query('phase == "II"').copy()
 
     def update_status(self):
@@ -994,13 +994,13 @@ class WtoDatabase3(object):
             columns=[rec[0] for rec in self._cursor.description])
 
         self._cursor.execute(self._sqlqa0com)
-        self.execblock_comm = pd.DataFrame(
+        self._execblock_comm = pd.DataFrame(
             self._cursor.fetchall(),
             columns=[rec[0] for rec in self._cursor.description]
         ).set_index('FINALCOMMENTID', drop=False)
 
         self.aqua_execblock = pd.merge(
-            self.aqua_execblock, self.execblock_comm, on='FINALCOMMENTID',
+            self.aqua_execblock, self._execblock_comm, on='FINALCOMMENTID',
             how='left').set_index('SB_UID', drop=False)
 
         self.aqua_execblock['delta'] = (self.aqua_execblock.ENDTIME -

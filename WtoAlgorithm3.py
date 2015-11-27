@@ -141,8 +141,6 @@ class WtoAlgorithm3(WtoDatabase3):
         self._ALMA_ephem = ALMA1
         self._static_calculated = False
 
-
-
     def set_time_now(self):
         """
 
@@ -260,8 +258,7 @@ class WtoAlgorithm3(WtoDatabase3):
                  horizon=20.,
                  minha=-3.,
                  maxha=3.,
-                 pwv=0.,
-                 mintrans=None):
+                 pwv=0.):
 
         """
 
@@ -363,8 +360,19 @@ class WtoAlgorithm3(WtoDatabase3):
                 )
 
                 self.master_wto_df['bl_ratio'] = 1.
+                self.master_wto_df['array_ar_cond'] = self.master_wto_df.apply(
+                    lambda x: CONFRES[x['BestConf']] if x['BestConf'] in conf
+                    else pd.np.NaN,
+                    axis=1
+                )
+                self.master_wto_df['num_bl_use'] = 630.
+
                 if calc_blratio:
-                    array_id = self.bl_arrays.iloc[0, 3]
+                    try:
+                        array_id = self.bl_arrays.iloc[0, 3]
+                    except AttributeError:
+                        self._query_array()
+                        array_id = self.bl_arrays.iloc[0, 3]
                     array_ar, num_bl, num_ant, ruv = self._get_bl_prop(array_id)
                     self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
                         self.master_wto_df.apply(
@@ -565,15 +573,23 @@ class WtoAlgorithm3(WtoDatabase3):
         """
 
         """
-        a = str(
+        bl = str(
             "select se.SE_TIMESTAMP ts1, sa.SLOG_ATTR_VALUE av1, "
             "se.SE_ARRAYNAME, se.SE_ID se1 from ALMA.SHIFTLOG_ENTRIES se, "
             "ALMA.SLOG_ENTRY_ATTR sa "
             "WHERE se.SE_TYPE=7 and se.SE_TIMESTAMP > SYSDATE - 1/1. "
             "and sa.SLOG_SE_ID = se.SE_ID and sa.SLOG_ATTR_TYPE = 31 "
             "and se.SE_LOCATION='OSF-AOS' and se.SE_CORRELATORTYPE = 'BL'")
+        # aca = str(
+        #     "select se.SE_TIMESTAMP ts1, sa.SLOG_ATTR_VALUE av1, "
+        #     "se.SE_ARRAYNAME, se.SE_ID se1, se.SE_ARRAYFAMILY, "
+        #     "se.SE_CORRELATORTYPE from ALMA.SHIFTLOG_ENTRIES se, "
+        #     "ALMA.SLOG_ENTRY_ATTR sa "
+        #     "WHERE se.SE_TYPE=7 and se.SE_TIMESTAMP > SYSDATE - 1/1. "
+        #     "and sa.SLOG_SE_ID = se.SE_ID and sa.SLOG_ATTR_TYPE = 31 "
+        #     "and se.SE_LOCATION='OSF-AOS'")
         try:
-            self._cursor.execute(a)
+            self._cursor.execute(bl)
             self._bl_arrays_info = pd.DataFrame(
                 self._cursor.fetchall(),
                 columns=[rec[0] for rec in self._cursor.description]
@@ -695,6 +711,7 @@ def calc_bl_ratio(arrayk, cycle, numbl, selconf, numant=None):
     :param cycle:
     :param numbl:
     :param selconf:
+    :param numant:
     :return:
     """
     if arrayk == "TWELVE-M" and selconf:
@@ -757,3 +774,4 @@ def calc_airmass(dec_el, transit=True):
         else:
             airmass = None
     return airmass
+
