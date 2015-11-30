@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import math
 
 
 def calc_cond_score(pwv, maxpwvc, fraction):
@@ -38,15 +39,15 @@ def calc_array_score(name, array_kind, ar, dec, array_ar_sb, minar, maxar):
 
     if array_kind == 'SEVEN-M' or array_kind == 'TP-Array':
         sb_array_score = 10.
-        arcorr = 0
+        corr = 0
 
     elif array_ar_sb == np.NaN or array_ar_sb <= 0:
         sb_array_score = 0.
-        arcorr = 0
+        corr = 0
 
     else:
         c_bmax = (0.4001 /
-                  np.cos(np.radians(-23.0262015) - np.radians(dec)) +
+                  np.cos(math.radians(-23.0262015) - math.radians(dec)) +
                   0.6103)
         corr = 1. / c_bmax
         arcorr = ar * corr
@@ -81,8 +82,7 @@ def calc_array_score(name, array_kind, ar, dec, array_ar_sb, minar, maxar):
             print("What happened with %s?" % name)
             sb_array_score = -1.
 
-    return pd.Series([sb_array_score, arcorr],
-                     index=['score_array', 'arcorr'])
+    return sb_array_score, ar * corr
 
 
 def calc_sb_completion(observed, execount):
@@ -118,7 +118,7 @@ def calc_cycle_grade_score(grade, cycle):
 
 def calc_ha_scorer(ha):
 
-    sb_ha_scorer = ((np.cos(np.radians((ha + 1.) * 15.)) - 0.3) /
+    sb_ha_scorer = ((math.cos(math.radians((ha + 1.) * 15.)) - 0.3) /
                     (1 - 0.3)) * 10.
 
     return sb_ha_scorer
@@ -136,3 +136,34 @@ def calc_total_score(scores, weights=None):
         score += weights[keys[n]] * s
 
     return score
+
+
+def calc_all_scores(pwv, maxpwvc, fraction, name, array_kind, ar, dec,
+                    array_ar_sb, minar, maxar, observed, execount, srank,
+                    grade, cycle, ha):
+
+    try:
+        cond_score = calc_cond_score(pwv, maxpwvc, fraction)
+    except ZeroDivisionError:
+        cond_score = -9999.0
+    array_score = calc_array_score(name, array_kind, ar, dec, array_ar_sb,
+                                   minar, maxar)
+    sbcompletion_score = calc_sb_completion(observed, execount)
+    executive_score = 10.
+    sciencerank_score = calc_sciencerank_score(srank)
+    cyclegrade_score = calc_cycle_grade_score(grade, cycle)
+    ha_score = calc_ha_scorer(ha)
+
+    score = calc_total_score(
+        [cond_score, array_score[0], sbcompletion_score,
+         executive_score, sciencerank_score, cyclegrade_score,
+         ha_score])
+
+    return pd.Series([cond_score, array_score[0], sbcompletion_score,
+                      executive_score, sciencerank_score, cyclegrade_score,
+                      ha_score, score, array_score[1]],
+                     index=[
+                         'conditon score', 'array score',
+                         'sb completion score', 'executive score',
+                         'science rank score', 'cycle grade score',
+                         'ha score', 'Score', 'AR PI'])

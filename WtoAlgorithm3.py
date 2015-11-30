@@ -3,6 +3,7 @@ import ephem
 import os
 import wto3_tools as wtool
 import ruvTest as rUV
+import datetime as dt
 
 from WtoDataBase3 import WtoDatabase3
 from astropy import units as u
@@ -229,6 +230,15 @@ class WtoAlgorithm3(WtoDatabase3):
                 self.schedblocks.apply(
                     lambda x: calc_tsys(x['band'], x['tsky_ot'], x['tau_ot'],
                                         x['airmass_ot']), axis=1))
+
+        self.obs_param.rise.fillna(0, inplace=True)
+        self.obs_param['rise datetime'] = self.obs_param.apply(
+            lambda x:
+            dt.datetime.strptime(
+                '2015-01-01 ' + str(int(x['rise'])) + ':' +
+                str(int(60*(x['rise'] - int(x['rise'])))),
+                '%Y-%m-%d %H:%M'),
+            axis=1)
 
         self._static_calculated = True
 
@@ -497,6 +507,47 @@ class WtoAlgorithm3(WtoDatabase3):
             lambda x: 1 / (x['bl_ratio'] * x['tsys_ratio']) if
             (x['bl_ratio'] * x['tsys_ratio']) <= 100. else 0., axis=1)
 
+        self.master_wto_df.set_index('SB_UID', drop=False, inplace=True)
+        self.selection_df.set_index('SB_UID', drop=False, inplace=True)
+
+        savedate = ALMA1.date
+        savehoriz = ALMA1.horizon
+        ALMA1.horizon = 0.0
+        lstdate = str(ALMA1.sidereal_time()).split(':')
+        lstdate0 = dt.datetime.strptime(
+            '2014-12-31 ' + str(lstdate[0]) + ':' +
+            str(lstdate[1]), '%Y-%m-%d %H:%M')
+        lstdate1 = dt.datetime.strptime(
+            '2015-01-01 ' + str(lstdate[0]) + ':' +
+            str(lstdate[1]), '%Y-%m-%d %H:%M')
+        lstdate2 = dt.datetime.strptime(
+            '2015-01-02 ' + str(lstdate[0]) + ':' +
+            str(lstdate[1]), '%Y-%m-%d %H:%M')
+        sunrisedate = ALMA1.previous_rising(ephem.Sun())
+        ALMA1.date = sunrisedate
+        sunriselst = str(ALMA1.sidereal_time()).split(':')
+        sunriselst_h = dt.datetime.strptime(
+            '2015-01-01 ' + str(sunriselst[0]) + ':' +
+            str(sunriselst[1]), '%Y-%m-%d %H:%M')
+        sunsetdate = ALMA1.next_setting(ephem.Sun())
+        ALMA1.date = sunsetdate
+        sunsetlst = str(ALMA1.sidereal_time()).split(':')
+        sunsetlst_h = dt.datetime.strptime(
+            '2015-01-01 ' + str(sunsetlst[0]) + ':' +
+            str(sunriselst[1]), '%Y-%m-%d %H:%M')
+
+        self.inputs = pd.DataFrame(
+            pd.np.array([lstdate0, lstdate1, lstdate2,
+                         sunsetlst_h - dt.timedelta(1), sunriselst_h,
+                         sunsetlst_h, sunriselst_h + dt.timedelta(1)]),
+            index=['lst0', 'lst1', 'lst2', 'set1', 'rise1', 'set2', 'rise2'],
+            columns=['2013.A']).transpose()
+        self.inputs.ix['2013.1', :] = self.inputs.ix['2013.A', :]
+        self.inputs.ix['2015.A', :] = self.inputs.ix['2013.A', :]
+        self.inputs.ix['2015.1', :] = self.inputs.ix['2013.A', :]
+        ALMA1.date = savedate
+        ALMA1.horizon = savehoriz
+
     def _aggregate_dfs(self):
 
         """
@@ -607,7 +658,7 @@ class WtoAlgorithm3(WtoDatabase3):
             'TS1').aggregate(
             {'SE_ARRAYNAME': max, 'SE1': max,
              'AV1': pd.np.count_nonzero}).query(
-            'AV1 > 32').reset_index().sort_values(by='TS1', ascending=False)
+            'AV1 > 30').reset_index().sort_values(by='TS1', ascending=False)
 
         # get latest pad info
 
