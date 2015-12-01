@@ -76,7 +76,10 @@ def calc_array_score(name, array_kind, ar, dec, array_ar_sb, minar, maxar):
         #     sb_array_score = 8.0
         elif array_ar_sb > 1.2 * arcorr:
             l = arcorr * 1.2 - maxar
-            s = 8. / l
+            try:
+                s = 8. / l
+            except ZeroDivisionError:
+                s = 8. / 1.e-5
             sb_array_score = (array_ar_sb - maxar) * s
         else:
             print("What happened with %s?" % name)
