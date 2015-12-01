@@ -24,7 +24,7 @@ header = str(
     'altitude of 30 degrees*\n\nAlso, *and just for the use of the !AoD*, '
     'there is a link that shows what it currently observable, given that it is '
     'over 20 degrees, within -4 and 4 HA, and executable in C36-7:\n\n'
-    '[[http://tableau.alma.cl/views/PresentingTableauALMA/DashboardTest?'
+    '[[http://tableau.alma.cl/views/PresentingTableauALMA/DSADashboard?'
     ':embed=y&:showShareOptions=true&:display_count=no]'
     '[What is up?]]\n\n The user is \'tableuser\' and the password should be '
     'avalaible with the AoD Lead (or otherwise send email to itoledo@alma.cl). '
