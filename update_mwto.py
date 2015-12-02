@@ -38,6 +38,11 @@ scorer = datas.master_wto_df.apply(
         x['EXECOUNT'], x['PRJ_SCIENTIFIC_RANK'], x['DC_LETTER_GRADE'],
         x['CYCLE'], x['HA']), axis=1)
 
+datas.master_wto_df['allconfs'] = datas.obs_param.apply(
+    lambda x: ','.join(
+        [str(x['C36_1']), str(x['C36_2']), str(x['C36_3']), str(x['C36_4']),
+         str(x['C36_5']), str(x['C36_7']), str(x['C36_8'])]), axis=1)
+
 scorer.to_sql('scorer_wto_test', engine, index_label='SBUID',
               if_exists='replace', schema='wto')
 datas.inputs.to_sql('inputs_wto_text', engine, index_label='Cycle',
