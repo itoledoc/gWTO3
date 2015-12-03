@@ -30,23 +30,26 @@ class WtoDatabase3(object):
     dataframes, and it also has the methods to connect and query the OSF
     archive for this info.
 
-    A default instance will use the directory $HOME/.Wto as a cache, and by
-    default find the approved Cycle 2 projects and carried-over Cycle 1
-    projects. If a file name or list are given as 'source' parameter, only the
-    information of the projects in that list or filename will be ingested.
+    A default instance will use the directory found on the $WTO system variable,
+    as a cache, and it will found the projects in the appropiate state for the
+    relevant Cycles.
 
-    Setting *forcenew* to True will force the cleaning of the cache dir, and
-    all information will be processed again.
-
-    :key refresh_apdm
+    :key refresh_apdm: Should the disk xml database be rebuilt? Default is True
+    :key path: path to store the xml database. Default is $WTO variable
+    :key allc2: temporal parameter for Cycle 3, load all Cycle2 projects, and
+         not only grade A. Default = True
+    :key loadp1: load phase I projects, and not only phase II. Default=True
 
 
     """
 
-    def __init__(self, refresh_apdm=True, path=None, allc2=True, loadp1=True):
+    def __init__(self, path=None, refresh_apdm=True, allc2=True, loadp1=True):
         """
         Initialize the WTO3 database
+        :type path: str
         :type refresh_apdm: bool
+        :type allc2: bool
+        :type loadp1: bool
 
         """
 

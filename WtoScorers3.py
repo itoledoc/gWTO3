@@ -51,8 +51,8 @@ def calc_array_score(name, array_kind, ar, dec, array_ar_sb, minar, maxar):
                   0.6103)
         corr = 1. / c_bmax
         arcorr = ar * corr
-        if arcorr > maxar or arcorr < minar:
-            print("WTF??? %s" % name)
+        # if arcorr > maxar or arcorr < minar:
+        #     print("WTF??? %s" % name)
 
         if name.endswith('_TC'):
             arcorr = minar / 0.8
@@ -72,8 +72,6 @@ def calc_array_score(name, array_kind, ar, dec, array_ar_sb, minar, maxar):
             l = 0.8 * arcorr - minar
             sb_array_score = ((array_ar_sb - minar) / l) * 8.0
 
-        # elif self.array_ar_sb < 0.8 * arcorr and points:
-        #     sb_array_score = 8.0
         elif array_ar_sb > 1.2 * arcorr:
             l = arcorr * 1.2 - maxar
             try:
@@ -82,7 +80,7 @@ def calc_array_score(name, array_kind, ar, dec, array_ar_sb, minar, maxar):
                 s = 8. / 1.e-5
             sb_array_score = (array_ar_sb - maxar) * s
         else:
-            print("What happened with %s?" % name)
+            # print("What happened with %s?" % name)
             sb_array_score = -1.
 
     return sb_array_score, ar * corr

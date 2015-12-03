@@ -102,23 +102,17 @@ class WtoAlgorithm3(WtoDatabase3):
 
     Should run:
        .update_archive
-       .crea_extrainfo
        .write_ephem
        .static_param
-       ._aggregate_dfs
        .selector
-       .scorere
+       .calc_scores
 
        (in this order)
     """
-    def __init__(self, refresh_apdm=True, path=None, allc2=False, loadp1=False):
+    def __init__(self,path=None,  refresh_apdm=True, allc2=False, loadp1=False):
 
         """
 
-        :type loadp1: bool
-        :type allc2: bool
-        :type path: str
-        :type refresh_apdm: bool
         """
         super(WtoAlgorithm3, self).__init__(
             refresh_apdm=refresh_apdm, path=path, allc2=allc2, loadp1=loadp1)
