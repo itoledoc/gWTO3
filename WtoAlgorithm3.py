@@ -2,7 +2,7 @@ import pandas as pd
 import ephem
 import os
 import wto3_tools as wtool
-import ruvTest as rUV
+import visibiltyTools as rUV
 import datetime as dt
 
 from WtoDataBase3 import WtoDatabase3
