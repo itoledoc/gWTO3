@@ -37,19 +37,20 @@ def calc_cond_score(pwv, maxpwvc, fraction):
 
 def calc_array_score(name, array_kind, ar, dec, array_ar_sb, minar, maxar):
 
+    c_bmax = (0.4001 /
+              np.cos(math.radians(-23.0262015) - math.radians(dec)) +
+              0.6103)
+    corr = 1. / c_bmax
+
     if array_kind == 'SEVEN-M' or array_kind == 'TP-Array':
         sb_array_score = 10.
         corr = 0
 
     elif array_ar_sb == np.NaN or array_ar_sb <= 0:
         sb_array_score = 0.
-        corr = 0
 
     else:
-        c_bmax = (0.4001 /
-                  np.cos(math.radians(-23.0262015) - math.radians(dec)) +
-                  0.6103)
-        corr = 1. / c_bmax
+
         arcorr = ar * corr
         # if arcorr > maxar or arcorr < minar:
         #     print("WTF??? %s" % name)

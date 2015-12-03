@@ -343,9 +343,9 @@ class WtoAlgorithm3(WtoDatabase3):
         if array_kind == "TWELVE-M":
 
             self.master_wto_df['blmax'] = self.master_wto_df.apply(
-                lambda row: rUV.computeBL(row['minAR'] / 0.8, 100.), axis=1)
+                lambda row: rUV.compute_bl(row['minAR'] / 0.8, 100.), axis=1)
             self.master_wto_df['blmin'] = self.master_wto_df.apply(
-                lambda row: rUV.computeBL(row['LAScor'], 100., las=True),
+                lambda row: rUV.compute_bl(row['LAScor'], 100., las=True),
                 axis=1)
 
             if conf:
@@ -709,7 +709,7 @@ class WtoAlgorithm3(WtoDatabase3):
                         index=False, sep=' ')
             ac = rUV.ac.ArrayConfigurationCasaFile()
             ac.createCasaConfig(conf_file)
-            ruv = rUV.computeRuv(conf_file + ".cfg")
+            ruv = rUV.compute_radialuv(conf_file + ".cfg")
             num_bl = len(ruv)
             num_ant = len(ap)
             array_ar = rUV.compute_array_ar(ruv)
@@ -718,7 +718,7 @@ class WtoAlgorithm3(WtoDatabase3):
         else:
             conf_file = (self._wto_path +
                          'conf/%s.cfg' % array_name)
-            ruv = rUV.computeRuv(conf_file)
+            ruv = rUV.compute_radialuv(conf_file)
             # noinspection PyTypeChecker
             array_ar = CONFRES[array_name]
             num_bl = 36 * 35. / 2.

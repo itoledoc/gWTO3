@@ -1,17 +1,16 @@
 import arrayConfigurationTools as ac
-from lxml import objectify
 from scipy.stats import rayleigh
 
 import numpy as np
 import math
 
 
-def computeRuv(fileCasa):
+def compute_radialuv(file_casa):
     """
     Compute the radial distance in the uv plane
     """
 
-    f = open(fileCasa, 'r')
+    f = open(file_casa, 'r')
 
     xx = []
     yy = []
@@ -27,26 +26,26 @@ def computeRuv(fileCasa):
 
     nant = len(xx)
     nbl = nant * (nant - 1) / 2
-    Ruv = np.zeros(nbl)
+    rad_uv = np.zeros(nbl)
 
     index = 0
     for i in range(nant):
         for j in range(0, i):
             r2 = (xx[i] - xx[j]) * (xx[i] - xx[j]) + (yy[i] - yy[j]) * (
                 yy[i] - yy[j])
-            Ruv[index] = math.sqrt(r2)
+            rad_uv[index] = math.sqrt(r2)
             index += 1
 
-    return (Ruv)
+    return rad_uv
 
 
-def computeBL(AR, freq, las=False):
+def compute_bl(ar, freq, las=False):
     """
-    compute the BL in meter for a resolution AR (applying a Briggs correction
+    compute the BL in meter for a resolution ar (applying a Briggs correction
     """
 
     try:
-        BLmax = 61800 / (freq * AR)
+        BLmax = 61800 / (freq * ar)
     except ZeroDivisionError:
         BLmax = 0.
 
