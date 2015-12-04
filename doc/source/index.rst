@@ -11,6 +11,10 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   readme
+   wtoapi
+
+
 
 
 Indices and tables

@@ -24,7 +24,7 @@ datas.static_param()
 pwv = pd.read_sql('pwv_data', engine).pwv.values[0]
 datas.selector(
     cycle=['2015.1', '2015.A'], minha=-4., maxha=4., letterg=['A', 'B'],
-    conf=['C36-7'], calc_blratio=True, pwv=pwv)
+    array_id='last', pwv=pwv)
 datas.selection_df['PWV now'] = pwv
 datas.selection_df['PWV now date'] = (
     pd.read_sql('pwv_data', engine).date.values[0] + ' ' +

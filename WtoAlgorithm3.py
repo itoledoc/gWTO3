@@ -109,7 +109,7 @@ class WtoAlgorithm3(WtoDatabase3):
 
        (in this order)
     """
-    def __init__(self,path=None,  refresh_apdm=True, allc2=False, loadp1=False):
+    def __init__(self, path=None,  refresh_apdm=True, allc2=False, loadp1=False):
 
         """
 
@@ -153,7 +153,7 @@ class WtoAlgorithm3(WtoDatabase3):
         self._time_astropy = Time(time_str)
         self._time_astropy.delta_ut1_utc = 0
         self._time_astropy.location = ALMA
-        self._ALMA_ephem.date = ephem.now(self._time_astropy.iso)
+        self._ALMA_ephem.date = ephem.date(self._time_astropy.iso)
 
     def write_ephem_coords(self):
 
@@ -392,6 +392,10 @@ class WtoAlgorithm3(WtoDatabase3):
                     )
 
             else:
+                if array_id == 'last':
+                    self._query_array()
+                    array_id = self.bl_arrays.iloc[0, 3]
+
                 ar, numbl, numant, ruv = self._get_bl_prop(array_id)
                 self.master_wto_df[['array_ar_cond', 'num_bl_use']] = (
                     self.master_wto_df.apply(
