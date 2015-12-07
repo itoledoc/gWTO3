@@ -1,6 +1,6 @@
-*************************
-Requirements to run WTO3:
-*************************
+************************
+Requirements to run WTO3
+************************
 
 
 Anaconda environment
@@ -24,8 +24,8 @@ dependencies:
 - python-dateutil=2.4.2=py27_0
 - sqlalchemy=1.0.9=py27_0
 
-Environment variables to be loaded:
-===================================
+Environment variables to be loaded
+==================================
 
 ::
 
@@ -37,8 +37,8 @@ Environment variables to be loaded:
     export PYTHONPATH="$PYTHONPATH:/path/to/gWTO3"
 
 
-Initialization of the Wto class:
-================================
+Initialization of the Wto class
+===============================
 
 ::
 

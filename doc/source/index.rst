@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    readme
+   use_cases
    wtoapi
 
 

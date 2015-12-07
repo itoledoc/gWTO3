@@ -161,6 +161,9 @@ def calc_all_scores(pwv, maxpwvc, fraction, name, array_kind, ar, dec,
          executive_score, sciencerank_score, cyclegrade_score,
          ha_score])
 
+    if cond_score == -9999.0:
+        score = -9999.0
+
     return pd.Series([cond_score, array_score[0], sbcompletion_score,
                       executive_score, sciencerank_score, cyclegrade_score,
                       ha_score, score, array_score[1]],

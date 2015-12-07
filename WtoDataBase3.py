@@ -26,9 +26,9 @@ PHASE_I_STATUS = ["Phase1Submitted", "Approved"]
 class WtoDatabase3(object):
 
     """
-    Database is the class that stores the Projects and SB information in
+    WtoDatabase3 is the class that stores the Projects and SB information in
     dataframes, and it also has the methods to connect and query the OSF
-    archive for this info.
+    archive for this info (ETL)
 
     A default instance will use the directory found on the $WTO system variable,
     as a cache, and it will found the projects in the appropiate state for the
@@ -960,6 +960,8 @@ class WtoDatabase3(object):
         self._cursor.execute(self._sql_executive)
         self.executive = pd.DataFrame(
             self._cursor.fetchall(), columns=['OBSPROJECT_UID', 'EXEC'])
+
+        self._old_projects = self.projects.copy()
 
         # noinspection PyUnusedLocal
         status = self.status
