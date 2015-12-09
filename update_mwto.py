@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-import os.path
 import time
+import os
 
 import pandas as pd
-import WtoAlgorithm3 as Wto
+import WtoDataBase3 as Data
+import WtoAlgorithm3 as Dsa
 import WtoScorers3 as WtoScor
 from sqlalchemy import create_engine
 from astropy.utils.data import download_file
@@ -16,40 +17,45 @@ refr = False
 if time.time() - os.path.getmtime('/users/aod/.mwto/') > 3600.:
     refr = True
 try:
-    datas = Wto.WtoAlgorithm3(refresh_apdm=refr, path='/users/aod/.mwto/')
+    datas = Data.WtoDatabase3(refresh_apdm=refr, path='/users/aod/.mwto/',
+                              allc2=False, loadp1=False)
 except IOError:
-    datas = Wto.WtoAlgorithm3(path='/users/aod/.mwto/')
-datas.write_ephem_coords()
-datas.static_param()
+    datas = Data.WtoDatabase3(path='/users/aod/.mwto/',
+                              allc2=False, loadp1=False)
+
+dsa = Dsa.WtoAlgorithm3(datas)
+
+dsa.write_ephem_coords()
+dsa.static_param()
 pwv = pd.read_sql('pwv_data', engine).pwv.values[0]
-datas.selector(
+dsa.selector(
     cycle=['2015.1', '2015.A'], minha=-4., maxha=4., letterg=['A', 'B'],
     array_id='last', pwv=pwv)
-datas.selection_df['PWV now'] = pwv
-datas.selection_df['PWV now date'] = (
+dsa.selection_df['PWV now'] = pwv
+dsa.selection_df['PWV now date'] = (
     pd.read_sql('pwv_data', engine).date.values[0] + ' ' +
     pd.read_sql('pwv_data', engine).time.values[0])
-datas.selection_df['date'] = str(datas._ALMA_ephem.date)
-datas.selection_df['arrayname'] = datas.bl_arrays.iloc[0, 3]
-scorer = datas.master_wto_df.apply(
+dsa.selection_df['date'] = str(dsa._ALMA_ephem.date)
+dsa.selection_df['arrayname'] = dsa.bl_arrays.iloc[0, 3]
+scorer = dsa.master_wto_df.apply(
     lambda x: WtoScor.calc_all_scores(
         1.3, x['maxPWVC'], x['Exec. Frac'], x['sbName'], x['array'], x['ARcor'],
         x['DEC'], x['array_ar_cond'], x['minAR'], x['maxAR'], x['Observed'],
         x['EXECOUNT'], x['PRJ_SCIENTIFIC_RANK'], x['DC_LETTER_GRADE'],
         x['CYCLE'], x['HA']), axis=1)
 
-datas.master_wto_df['allconfs'] = datas.obs_param.apply(
+dsa.master_wto_df['allconfs'] = dsa.obs_param.apply(
     lambda x: ','.join(
         [str(x['C36_1']), str(x['C36_2']), str(x['C36_3']), str(x['C36_4']),
          str(x['C36_5']), str(x['C36_7']), str(x['C36_8'])]), axis=1)
 
 scorer.to_sql('scorer_wto_test', engine, index_label='SBUID',
               if_exists='replace', schema='wto')
-datas.inputs.to_sql('inputs_wto_text', engine, index_label='Cycle',
+dsa.inputs.to_sql('inputs_wto_text', engine, index_label='Cycle',
                     if_exists='replace', schema='wto')
-datas.selection_df.to_sql('selection_wto_test', engine, index_label='SBUID',
+dsa.selection_df.to_sql('selection_wto_test', engine, index_label='SBUID',
                           if_exists='replace', schema='wto')
-datas.master_wto_df.to_sql('master_wto_test', engine, index_label='SBUID',
+dsa.master_wto_df.to_sql('master_wto_test', engine, index_label='SBUID',
                            if_exists='replace', schema='wto')
 
 datas._cursor.close()
