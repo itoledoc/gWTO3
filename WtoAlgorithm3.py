@@ -5,7 +5,6 @@ import wto3_tools as wtool
 import visibiltyTools as rUV
 import datetime as dt
 
-from WtoDataBase3 import WtoDatabase3
 from astropy import units as u
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -92,7 +91,7 @@ CYC_NA = {'2013.A': 34,
 
 
 # noinspection PyAttributeOutsideInit
-class WtoAlgorithm3(WtoDatabase3):
+class WtoAlgorithm3(object):
     """
     Inherits from WtoDatabase, adds the methods for selection and scoring.
     It also sets the default parameters for these methods: pwv=1.2, date=now,
@@ -109,22 +108,22 @@ class WtoAlgorithm3(WtoDatabase3):
 
        (in this order)
     """
-    def __init__(self, path=None,  refresh_apdm=True, allc2=False, loadp1=False):
+    def __init__(self, data):
 
         """
 
         """
-        super(WtoAlgorithm3, self).__init__(
-            refresh_apdm=refresh_apdm, path=path, allc2=allc2, loadp1=loadp1)
 
+        self.data = data
         self.tau = pd.read_csv(
-            self._wto_path + 'conf/tau.csv', sep=',', header=0).set_index(
+            self.data._wto_path + 'conf/tau.csv', sep=',', header=0).set_index(
             'freq')
         self.tsky = pd.read_csv(
-            self._wto_path + 'conf/tskyR.csv', sep=',', header=0).set_index(
+            self.data._wto_path + 'conf/tskyR.csv', sep=',',
+            header=0).set_index(
                 'freq')
         self.pwvdata = pd.read_pickle(
-            self._wto_path + 'conf/pwvdata2.pandas')  # .set_index('freq')
+            self.data._wto_path + 'conf/pwvdata2.pandas')  # .set_index('freq')
         # self.pwvdata.index = pd.Float64Index(
         #     pd.np.round(self.pwvdata.index.values, decimals=1), name=u'freq')
 
@@ -135,6 +134,7 @@ class WtoAlgorithm3(WtoDatabase3):
         self._time_astropy = TIME
         self._ALMA_ephem = ALMA1
         self._static_calculated = False
+        self.schedblocks = self.data.schedblocks.copy()
 
     def set_time_now(self):
         """
@@ -159,12 +159,13 @@ class WtoAlgorithm3(WtoDatabase3):
 
         """
         TODO: deal with multiple targets, which RA to take?
+        TODO: make this table unique... by instance
         """
         self.schedblocks['ephem'] = 'N/A'
 
         ephem_sb = pd.merge(
             self.schedblocks,
-            self.target_tables.query(
+            self.data.target_tables.query(
                 'solarSystem != "Unspecified" and isQuery == False and '
                 'RA == 0'),
             on='SB_UID').drop_duplicates(['SB_UID', 'ephemeris']).set_index(
@@ -188,7 +189,7 @@ class WtoAlgorithm3(WtoDatabase3):
         :param horizon:
         """
         if self._static_calculated:
-            idx = self.target_tables.query(
+            idx = self.data.target_tables.query(
                 'solarSystem != "Unspecified" and isQuery == False and '
                 'RA == 0').SB_UID.unique()
 
@@ -242,7 +243,8 @@ class WtoAlgorithm3(WtoDatabase3):
 
         :param obsproject_uid:
         """
-        self._update_apdm(obsproject_uid)
+        self.data._update_apdm(obsproject_uid)
+        self.schedblocks = self.data.schedblocks.copy()
         self._static_calculated = False
 
     def selector(self,
@@ -552,17 +554,17 @@ class WtoAlgorithm3(WtoDatabase3):
 
         """
         self.master_wto_df = pd.merge(
-            self.projects.query('phase == "II"')[
+            self.data.projects.query('phase == "II"')[
                 ['OBSPROJECT_UID', 'CYCLE', 'CODE', 'DC_LETTER_GRADE',
                  'PRJ_SCIENTIFIC_RANK', 'PRJ_STATUS']],
-            self.sciencegoals.query('hasSB == True')[
+            self.data.sciencegoals.query('hasSB == True')[
                 ['OBSPROJECT_UID', 'SG_ID', 'OUS_ID', 'ARcor', 'LAScor',
                  'isTimeConstrained', 'isCalSpecial', 'isSpectralScan']],
             on='OBSPROJECT_UID', how='left')
 
         self.master_wto_df = pd.merge(
             self.master_wto_df,
-            self.sblocks[
+            self.data.sblocks[
                 ['OBSPROJECT_UID', 'OUS_ID', 'GOUS_ID', 'MOUS_ID', 'SB_UID']],
             on=['OBSPROJECT_UID', 'OUS_ID'], how='left')
 
@@ -578,7 +580,7 @@ class WtoAlgorithm3(WtoDatabase3):
 
         self.master_wto_df = pd.merge(
             self.master_wto_df,
-            self.sb_status[['SB_UID', 'SB_STATE', 'EXECOUNT']],
+            self.data.sb_status[['SB_UID', 'SB_STATE', 'EXECOUNT']],
             on=['SB_UID'], how='left')
 
         # noinspection PyUnusedLocal
@@ -586,7 +588,7 @@ class WtoAlgorithm3(WtoDatabase3):
         h = ephem.Date(ephem.now() - 7.)
         # noinspection PyUnusedLocal
         hs = str(h)[:10].replace('/', '-')
-        qastatus = self.aqua_execblock.query(
+        qastatus = self.data.aqua_execblock.query(
             'SB_UID in @sbs_uid_s').query(
             'QA0STATUS in ["Unset", "Pass"] or '
             '(QA0STATUS == "SemiPass" and STARTTIME > @hs)').groupby(
@@ -638,10 +640,10 @@ class WtoAlgorithm3(WtoDatabase3):
         #     "and sa.SLOG_SE_ID = se.SE_ID and sa.SLOG_ATTR_TYPE = 31 "
         #     "and se.SE_LOCATION='OSF-AOS'")
         try:
-            self._cursor.execute(bl)
+            self.data._cursor.execute(bl)
             self._bl_arrays_info = pd.DataFrame(
-                self._cursor.fetchall(),
-                columns=[rec[0] for rec in self._cursor.description]
+                self.data._cursor.fetchall(),
+                columns=[rec[0] for rec in self.data._cursor.description]
             ).sort_values(by='TS1', ascending=False)
         except ValueError:
             self._bl_arrays_info = pd.DataFrame(
@@ -670,10 +672,10 @@ class WtoAlgorithm3(WtoDatabase3):
         )
 
         try:
-            self._cursor.execute(b)
+            self.data._cursor.execute(b)
             self._shifts = pd.DataFrame(
-                self._cursor.fetchall(),
-                columns=[rec[0] for rec in self._cursor.description]
+                self.data._cursor.fetchall(),
+                columns=[rec[0] for rec in self.data._cursor.description]
             ).sort_values(by='TS1', ascending=False)
         except ValueError:
             self._shifts = pd.DataFrame(
@@ -708,7 +710,7 @@ class WtoAlgorithm3(WtoDatabase3):
             conf = pd.merge(ap, self._ante_pad,
                             left_on='antenna', right_on='antenna')[
                 ['pad', 'antenna']]
-            conf_file = self._data_path + '%s.txt' % array_name
+            conf_file = self.data._data_path + '%s.txt' % array_name
             conf.to_csv(conf_file, header=False,
                         index=False, sep=' ')
             ac = rUV.ac.ArrayConfigurationCasaFile()
@@ -720,7 +722,7 @@ class WtoAlgorithm3(WtoDatabase3):
 
         # If C36 is selected
         else:
-            conf_file = (self._wto_path +
+            conf_file = (self.data._wto_path +
                          'conf/%s.cfg' % array_name)
             ruv = rUV.compute_radialuv(conf_file)
             # noinspection PyTypeChecker

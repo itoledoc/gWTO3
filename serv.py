@@ -9,10 +9,12 @@ class DSACoreService(xmlrpc.XMLRPC):
 
     def __init__(self):
         xmlrpc.XMLRPC.__init__(self)
+        import WtoDataBase3 as Data
         from astropy.utils.data import download_file
         from astropy.utils import iers
         iers.IERS.iers_table = iers.IERS_A.open(
             download_file(iers.IERS_A_URL, cache=True))
+        data = Data.WtoDatabase3(refresh_apdm=True, allc2=False, loadp1=False)
 
     def xmlrpc_run(self,
                    array_kind='TWELVE-M',
@@ -34,17 +36,17 @@ class DSACoreService(xmlrpc.XMLRPC):
         import WtoAlgorithm3 as Wto
         import WtoScorers3 as WtoScor
 
-        datas = Wto.WtoAlgorithm3(refresh_apdm=False)
-        datas.write_ephem_coords()
-        datas.static_param()
+        dsa = Wto.WtoAlgorithm3(data)
+        dsa.write_ephem_coords()
+        dsa.static_param()
 
-        datas.set_time_now() #Parametrized
+        dsa.set_time_now() #Parametrized
 
-        datas.selector(
+        dsa.selector(
             cycle=['2015.1', '2015.A'], minha=-4., maxha=4., letterg=['A', 'B'],
             array_id='last', pwv=0.5)
 
-        scorer = datas.master_wto_df.apply(
+        scorer = dsa.master_wto_df.apply(
             lambda x: WtoScor.calc_all_scores(
                 pwv, x['maxPWVC'], x['Exec. Frac'], x['sbName'], x['array'], x['ARcor'],
                 x['DEC'], x['array_ar_cond'], x['minAR'], x['maxAR'], x['Observed'],
@@ -52,8 +54,9 @@ class DSACoreService(xmlrpc.XMLRPC):
                 x['CYCLE'], x['HA']), axis=1)
 
         import pandas as pd
-        fin = pd.merge(pd.merge(datas.master_wto_df, datas.selection_df, on='SB_UID'),
-                       scorer.reset_index(), on='SB_UID').set_index('SB_UID', drop=False)
+        fin = pd.merge(pd.merge(dsa.master_wto_df, dsa.selection_df, on='SB_UID'),
+                       scorer.reset_index(), on='SB_UID').set_index(
+            'SB_UID', drop=False)
         return fin.to_json(orient='index');
 
 if __name__ == '__main__':
