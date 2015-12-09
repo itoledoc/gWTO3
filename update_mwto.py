@@ -52,11 +52,13 @@ dsa.master_wto_df['allconfs'] = dsa.obs_param.apply(
 scorer.to_sql('scorer_wto_test', engine, index_label='SBUID',
               if_exists='replace', schema='wto')
 dsa.inputs.to_sql('inputs_wto_text', engine, index_label='Cycle',
-                    if_exists='replace', schema='wto')
+                  if_exists='replace', schema='wto')
 dsa.selection_df.to_sql('selection_wto_test', engine, index_label='SBUID',
-                          if_exists='replace', schema='wto')
+                        if_exists='replace', schema='wto')
 dsa.master_wto_df.to_sql('master_wto_test', engine, index_label='SBUID',
-                           if_exists='replace', schema='wto')
+                         if_exists='replace', schema='wto')
+dsa.obs_param.to_sql('staticparam_wto_test', engine, index_label='SBUID',
+                     if_exists='replace', schema='wto')
 
 datas._cursor.close()
 datas._connection.close()
