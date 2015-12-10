@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import WtoAlgorithm3 as Wto
+import WtoDataBase3 as Wto
+import WtoAlgorithm3 as Dsa
 import pandas as pd
 import ephem
 import sys
@@ -59,27 +60,31 @@ def color_states(state, execount, qunset, qpass):
 
 
 # noinspection PyUnusedLocal
-def print_twiki(conf):
+def print_twiki(conf, dsa):
 
-    sched_conf = datas.schedblocks.query(
-        'BestConf in ["C36-8", "C36-7"]')[
-        ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA', 'execount',
-         'OBSPROJECT_UID', 'isPolarization', 'maxPWVC']]
+    if conf in ["C36-7", 'C36-8']:
+        sched_conf = dsa.data.schedblocks.query(
+            'BestConf in ["C36-8", "C36-7"]')[
+            ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA', 'execount',
+             'OBSPROJECT_UID', 'isPolarization', 'maxPWVC']]
+    else:
+        sched_conf = dsa.data.schedblocks[
+            ['SB_UID', 'SG_ID', 'OUS_ID', 'sbName', 'sbNote', 'band', 'RA', 'execount',
+             'OBSPROJECT_UID', 'isPolarization', 'maxPWVC']]
 
-    sched_conf_s = pd.merge(sched_conf, datas.sb_status[['SB_UID', 'SB_STATE']],
+    sched_conf_s = pd.merge(sched_conf, dsa.data.sb_status[['SB_UID', 'SB_STATE']],
                             on='SB_UID', how='left')
     sched_conf_ss = pd.merge(
-        datas.sciencegoals[['OBSPROJECT_UID', 'OUS_ID', 'isTimeConstrained']],
+        dsa.data.sciencegoals[['OBSPROJECT_UID', 'OUS_ID', 'isTimeConstrained']],
         sched_conf_s, on=['OBSPROJECT_UID', 'OUS_ID'])
     sched_conf_ssp = pd.merge(
         pd.merge(
-            datas.projects[['OBSPROJECT_UID', 'CODE', 'PRJ_STATUS', 'CYCLE',
+            dsa.data.projects[['OBSPROJECT_UID', 'CODE', 'PRJ_STATUS', 'CYCLE',
                             'DC_LETTER_GRADE']],
-            datas.obsproject[['OBSPROJECT_UID', 'NOTE']], on='OBSPROJECT_UID'),
+            dsa.data.obsproject[['OBSPROJECT_UID', 'NOTE']], on='OBSPROJECT_UID'),
         sched_conf_ss, on='OBSPROJECT_UID', how='right')
 
-    table = sched_conf_ssp.query(
-        'CYCLE != "2013.A" and DC_LETTER_GRADE != "C"').sort('RA')[
+    table = sched_conf_ssp.sort('RA')[
         ['SB_UID', 'CODE', 'SG_ID', 'sbName', 'band', 'maxPWVC', 'RA', 'execount', 'sbNote',
          'SB_STATE', 'PRJ_STATUS', 'NOTE', 'isTimeConstrained', 'isPolarization',
          'OBSPROJECT_UID']].sort('RA')
@@ -89,15 +94,19 @@ def print_twiki(conf):
                         int(60. * (ro1['RA'] / 15. - int(ro1['RA'] / 15.)))))
         , axis=1).astype(str).str.slice(0, 5)
 
+    conf_head = conf.replace('-', '_')
     table = pd.merge(
         table,
-        datas.obs_param.query('C36_7 == @conf')[['SB_UID', 'rise', 'set']],
+        dsa.obs_param.query('%s == @conf' % conf_head)[['SB_UID', 'rise', 'set']],
         on='SB_UID', how='inner').set_index('SB_UID', drop=False)
     table['rise_lst'] = table.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['rise']),
                         int(60. * (ro1['rise'] - int(ro1['rise'])))))
         , axis=1)
+
+    table.set.fillna(0, inplace=True)
+    table.rise_lst.fillna(0, inplace=True)
     table['set_lst'] = table.apply(
         lambda ro1: pd.Timestamp.time(
             pd.datetime(2015, 1, 1, int(ro1['set']),
@@ -110,7 +119,7 @@ def print_twiki(conf):
     h = ephem.Date(ephem.now() - 7.)
     hs = str(h)[:10].replace('/', '-')
     sbs = table.index.unique()
-    qastatus = datas.aqua_execblock.query(
+    qastatus = dsa.data.aqua_execblock.query(
         'SB_UID in @sbs').query(
         'QA0STATUS in ["Unset", "Pass"] or ('
         'QA0STATUS == "SemiPass" and STARTTIME > @hs)').groupby(
@@ -123,8 +132,15 @@ def print_twiki(conf):
     try:
         table_b['Observed'] = table_b.Unset + table_b.Pass + table_b.SemiPass
     except:
-        table_b['Observed'] = table_b.Unset + table_b.Pass
-        table_b['SemiPass'] = 0
+        try:
+            table_b['Observed'] = table_b.Unset + table_b.Pass
+            table_b['SemiPass'] = 0
+        except:
+            table_b['Unset'] = 0
+            table_b['Observed'] = 0
+            table_b['SemiPass'] = 0
+
+    table_csv = table_b.copy()
 
     table_b['execount'] = table_b.apply(lambda x: str(int(x['execount'])), axis=1)
     table_b['Unset'] = table_b.apply(lambda x: str(int(x['Unset'])), axis=1)
@@ -169,7 +185,7 @@ def print_twiki(conf):
         table_fin = table_fin.append(r[1], ignore_index=True)
         if r[1]['Pass Obs.'] > 0:
             sb_uid = r[1]['SB UID']
-            df = datas.aqua_execblock.query(
+            df = dsa.data.aqua_execblock.query(
                 'SB_UID == @sb_uid and QA0STATUS == "Pass"')
             for d in df.iterrows():
                 rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
@@ -182,7 +198,7 @@ def print_twiki(conf):
                 table_fin = table_fin.append(row_temp, ignore_index=True)
         if r[1]['Unset Obs.'] > 0:
             sb_uid = r[1]['SB UID']
-            df = datas.aqua_execblock.query(
+            df = dsa.data.aqua_execblock.query(
                 'SB_UID == @sb_uid and QA0STATUS == "Unset"')
             for d in df.iterrows():
                 rarr = [('^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^', '^',
@@ -195,7 +211,7 @@ def print_twiki(conf):
                 table_fin = table_fin.append(row_temp, ignore_index=True)
         if r[1]['SemiPass Obs.'] > 0:
             sb_uid = r[1]['SB UID']
-            df = datas.aqua_execblock.query(
+            df = dsa.data.aqua_execblock.query(
                 'SB_UID == @sb_uid and (QA0STATUS == "SemiPass" and '
                 'STARTTIME > @hs)')
             for d in df.iterrows():
@@ -215,6 +231,7 @@ def print_twiki(conf):
     s = tabulate(table_fin.set_index('SB UID'), tablefmt='orgtbl')
     f.write(header + s)
     f.close()
+    return table_fin, table_csv
 
 
 if __name__ == '__main__':
@@ -229,23 +246,18 @@ if __name__ == '__main__':
 
     opts, args = parser.parse_args()
     print "Twiki for %s" % opts.conf
-    if opts.conf not in ['c368', 'c367']:
-        print("Use either c368 or c367 as input for --conf")
-        sys.exit(1)
 
-    datas = Wto.WtoAlgorithm3(path=Wto.home + '/.twiki/',
-                              refresh_apdm=opts.reload)
-    datas.write_ephem_coords()
+    datas = Wto.WtoDatabase3(path='/home/itoledo/Documents/twiki/',
+                             refresh_apdm=opts.reload, allc2=False,
+                             loadp1=False)
+    dsa = Dsa.WtoAlgorithm3(datas)
+    dsa.write_ephem_coords()
 
-    datas.static_param(horizon=30)
-    datas.aqua_execblock['LST_START'] = datas.aqua_execblock.apply(
+    dsa.static_param(horizon=20)
+    dsa.data.aqua_execblock['LST_START'] = dsa.data.aqua_execblock.apply(
         lambda x: get_lst(x['STARTTIME'], ALMA1), axis=1)
-    datas.aqua_execblock['LST_END'] = datas.aqua_execblock.apply(
+    dsa.data.aqua_execblock['LST_END'] = dsa.data.aqua_execblock.apply(
         lambda x: get_lst(x['ENDTIME'], ALMA1), axis=1)
 
-    if opts.conf == 'c368':
-        print_twiki('C36-8')
-    elif opts.conf == 'c367':
-        print_twiki('C36-7')
-    else:
-        print("Use --conf=c368 or --conf=c367")
+    print opts.conf
+    print_twiki(opts.conf, dsa)

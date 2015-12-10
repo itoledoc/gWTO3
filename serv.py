@@ -34,15 +34,20 @@ class DSACoreService(xmlrpc.XMLRPC):
                    horizon=20,
                    minha=-3.,
                    maxha=3.,
-                   pwv=0.5):
+                   pwv=0.5,
+                   timestring=None):
         import WtoAlgorithm3 as Wto
         import WtoScorers3 as WtoScor
 
+        self.data.update_status()
         dsa = Wto.WtoAlgorithm3(self.data)
         dsa.write_ephem_coords()
         dsa.static_param()
 
-        dsa.set_time_now() #Parametrized
+        if timestring:
+            dsa.set_time(timestring)
+        else:
+            dsa.set_time_now() #Parametrized
 
         dsa.selector(
             cycle=['2015.1', '2015.A'], minha=-4., maxha=4., letterg=['A', 'B'],
@@ -58,7 +63,7 @@ class DSACoreService(xmlrpc.XMLRPC):
         import pandas as pd
         fin = pd.merge(pd.merge(dsa.master_wto_df, dsa.selection_df, on='SB_UID'),
                        scorer.reset_index(), on='SB_UID').set_index(
-            'SB_UID', drop=False)
+            'SB_UID', drop=False).sort('Score', ascending=0)
         return fin.to_json(orient='index');
 
 if __name__ == '__main__':
