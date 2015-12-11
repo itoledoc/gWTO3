@@ -1,4 +1,4 @@
-import WtoAlgorithm3 as Wto
+import DsaAlgorithm3 as Wto
 import ephem
 import numpy as np
 import pylab as py

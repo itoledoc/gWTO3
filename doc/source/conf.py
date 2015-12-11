@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# WTO3 documentation build configuration file, created by
+# DsaCore3 documentation build configuration file, created by
 # sphinx-quickstart on Fri Oct 30 21:03:31 2015.
 #
 # This file is execfile()d with the current directory set to its
@@ -56,7 +56,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'WTO3'
+project = u'DsaCore3'
 copyright = u'2015, ALMA'
 author = u'ALMA'
 
@@ -210,7 +210,7 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'WTO3doc'
+htmlhelp_basename = 'DsaCore3doc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -232,7 +232,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  (master_doc, 'WTO3.tex', u'WTO3 Documentation',
+  (master_doc, 'DsaCore3.tex', u'DsaCore3 Documentation',
    u'ALMA', 'manual'),
 ]
 
@@ -262,7 +262,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'wto3', u'WTO3 Documentation',
+    (master_doc, 'DsaCore3', u'DsaCore3 Documentation',
      [author], 1)
 ]
 
@@ -276,8 +276,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  (master_doc, 'WTO3', u'WTO3 Documentation',
-   author, 'WTO3', 'One line description of project.',
+  (master_doc, 'DsaCore3', u'DsaCore3 Documentation',
+   author, 'DsaCore3', 'One line description of project.',
    'Miscellaneous'),
 ]
 

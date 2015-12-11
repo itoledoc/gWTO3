@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import WtoDataBase3 as Wto
-import WtoAlgorithm3 as Dsa
+import DsaDataBase3 as Wto
+import DsaAlgorithm3 as Dsa
 import pandas as pd
 import ephem
 import sys

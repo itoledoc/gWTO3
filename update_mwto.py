@@ -3,9 +3,9 @@ import time
 import os
 
 import pandas as pd
-import WtoDataBase3 as Data
-import WtoAlgorithm3 as Dsa
-import WtoScorers3 as WtoScor
+import DsaDataBase3 as Data
+import DsaAlgorithm3 as Dsa
+import DsaScorers3 as WtoScor
 from sqlalchemy import create_engine
 from astropy.utils.data import download_file
 from astropy.utils import iers

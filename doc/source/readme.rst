@@ -31,10 +31,10 @@ Environment variables to be loaded
 
     export TNS_ADMIN=/path/to/tnsnames.ora
     export PATH="$HOME/anaconda/bin:$PATH"  --> path to the anaconda environment, in this case installed in the home directory
-    export WTO="/path/to/gWTO3/"
+    export DSA="/path/to/DsaCore3/"
     export CON_STR="almasu/alma4dba@ALMA_ONLINE.SCO.CL" --> conection string to archive. If in the OSF, "almasu/alma4dba@ALMA_ONLINE.OSF.CL"
     export APDM_C3="/path/to/save/apdms"
-    export PYTHONPATH="$PYTHONPATH:/path/to/gWTO3"
+    export PYTHONPATH="$PYTHONPATH:/path/to/DsaCore3"
 
 
 Initialization of the Wto class
@@ -42,15 +42,16 @@ Initialization of the Wto class
 
 ::
 
-    import WtoAlgorithm3 as Wto
-    import WtoScorers3 as WtoScor
+    import DsaDataBase3 as Data
+    import DsaAlgorithm3 as Dsa
+    import DsaScorers3 as DsaScor
 
     from astropy.utils.data import download_file
     from astropy.utils import iers
     iers.IERS.iers_table = iers.IERS_A.open(
         download_file(iers.IERS_A_URL, cache=True))
 
-    datas = Wto.WtoAlgorithm3()
+    datas = Data.WtoAlgorithm3()
 
 
     datas.write_ephem_coords()

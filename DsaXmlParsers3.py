@@ -1,6 +1,6 @@
 from lxml import objectify
 import pandas as pd
-from WtoConverter3 import *
+from DsaConverter3 import *
 import ephem
 
 __author__ = 'itoledo'

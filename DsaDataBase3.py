@@ -1,13 +1,13 @@
 import os
 import sys
-import WtoArrayResolutionCy3 as ARes
+import DsaArrayResolutionCy3 as ARes
 import cx_Oracle
-import wto3_tools as wtool
+import DsaTools3 as wtool
 
-from WtoGetCycle3 import get_all_apdm, get_apdm
+from DsaGetCycle3 import get_all_apdm, get_apdm
 from collections import namedtuple
-from WtoXmlParsers3 import *
-from WtoConverter3 import *
+from DsaXmlParsers3 import *
+from DsaConverter3 import *
 
 
 prj = '{Alma/ObsPrep/ObsProject}'

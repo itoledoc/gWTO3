@@ -9,7 +9,7 @@ class DSACoreService(xmlrpc.XMLRPC):
 
     def __init__(self):
         xmlrpc.XMLRPC.__init__(self)
-        import WtoDataBase3 as Data
+        import DsaDataBase3 as Data
         from astropy.utils.data import download_file
         from astropy.utils import iers
         iers.IERS.iers_table = iers.IERS_A.open(
@@ -36,8 +36,8 @@ class DSACoreService(xmlrpc.XMLRPC):
                    maxha=3.,
                    pwv=0.5,
                    timestring=None):
-        import WtoAlgorithm3 as Wto
-        import WtoScorers3 as WtoScor
+        import DsaAlgorithm3 as Wto
+        import DsaScorers3 as WtoScor
 
         self.data.update_status()
         dsa = Wto.WtoAlgorithm3(self.data)

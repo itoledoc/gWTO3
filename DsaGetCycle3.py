@@ -1,6 +1,6 @@
 import os
 import sys
-from WtoXmlParsers3 import *
+from DsaXmlParsers3 import *
 import shutil
 
 __author__ = 'itoledo'
