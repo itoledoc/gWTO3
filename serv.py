@@ -14,7 +14,7 @@ class DSACoreService(xmlrpc.XMLRPC):
         from astropy.utils import iers
         iers.IERS.iers_table = iers.IERS_A.open(
             download_file(iers.IERS_A_URL, cache=True))
-        self.data = Data.WtoDatabase3(refresh_apdm=True, allc2=False, loadp1=False)
+        self.data = Data.DsaDatabase3(refresh_apdm=True, allc2=False, loadp1=False)
 
     def xmlrpc_run(self,
                    array_kind='TWELVE-M',

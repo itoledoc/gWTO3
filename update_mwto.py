@@ -17,10 +17,10 @@ refr = False
 if time.time() - os.path.getmtime('/users/aod/.mwto/') > 3600.:
     refr = True
 try:
-    datas = Data.WtoDatabase3(refresh_apdm=refr, path='/users/aod/.mwto/',
+    datas = Data.DsaDatabase3(refresh_apdm=refr, path='/users/aod/.mwto/',
                               allc2=False, loadp1=False)
 except IOError:
-    datas = Data.WtoDatabase3(path='/users/aod/.mwto/',
+    datas = Data.DsaDatabase3(path='/users/aod/.mwto/',
                               allc2=False, loadp1=False)
 
 dsa = Dsa.WtoAlgorithm3(datas)

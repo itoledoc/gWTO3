@@ -247,7 +247,7 @@ if __name__ == '__main__':
     opts, args = parser.parse_args()
     print "Twiki for %s" % opts.conf
 
-    datas = Wto.WtoDatabase3(path='/home/itoledo/Documents/twiki/',
+    datas = Wto.DsaDatabase3(path='/home/itoledo/Documents/twiki/',
                              refresh_apdm=opts.reload, allc2=False,
                              loadp1=False)
     dsa = Dsa.WtoAlgorithm3(datas)

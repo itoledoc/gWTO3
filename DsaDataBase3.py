@@ -2,7 +2,7 @@ import os
 import sys
 import DsaArrayResolutionCy3 as ARes
 import cx_Oracle
-import DsaTools3 as wtool
+import DsaTools3 as DsaTool
 
 from DsaGetCycle3 import get_all_apdm, get_apdm
 from collections import namedtuple
@@ -23,10 +23,10 @@ PHASE_I_STATUS = ["Phase1Submitted", "Approved"]
 
 
 # noinspection PyAttributeOutsideInit
-class WtoDatabase3(object):
+class DsaDatabase3(object):
 
     """
-    WtoDatabase3 is the class that stores the Projects and SB information in
+    DsaDatabase3 is the class that stores the Projects and SB information in
     dataframes, and it also has the methods to connect and query the OSF
     archive for this info (ETL)
 
@@ -261,7 +261,7 @@ class WtoDatabase3(object):
             self._schedblocks_temp.repfreq / 100.
         self._schedblocks_temp['OT_BestConf'] = self._schedblocks_temp.apply(
             lambda x: self._ares.array[
-                wtool.find_array(x['assumedconf_ar_ot'], self._listconf)] if
+                DsaTool.find_array(x['assumedconf_ar_ot'], self._listconf)] if
             x['array'] == "TWELVE-M" else "N/A",
             axis=1)
         ar = self._schedblocks_temp.apply(lambda x: self._get_ar_lim(x), axis=1)
